@@ -1,8 +1,8 @@
 # Fork updates
 
 The update that made in this fork: 
-1. Open3D version from 0.7.0 to 0.8.0, 0.9.0 has Possion Surface Reconstruction that is hard to compile. 
-0.8.0 has enough point cloud processing functions. 
+1. Open3D version from 0.7.0 to 0.8.0, and 0.9.0. 
+For 0.9.0, it has PossionRecon-android.patch for the submodule PossionRecon.
 2. The original repo removes Tools and Visualization, in this fork IO module is removed since some external libraries are hard to compile (turbojpeg).
 3. The abi includes armeabi-v7a and arm64-v8a. 
 
