@@ -51,9 +51,9 @@ macro(fetch_open3d)
     open3d-fetch
     # no SOURCE_DIR, let CMake figure it out based on EP_BASE
     GIT_REPOSITORY https://github.com/intel-isl/Open3D.git
-    GIT_TAG v0.7.0
+    GIT_TAG v0.8.0
     GIT_SHALLOW true
-    PATCH_COMMAND ${GIT_EXECUTABLE} apply ${open3d_patch}
+    PATCH_COMMAND ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${open3d_patch}
     # override default commands so CMake isn't invoked
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
@@ -80,11 +80,14 @@ macro(crosscompile_open3d abi)
       -DCMAKE_INSTALL_PREFIX:PATH=${install_prefix}
       -C ${open3d_config}
   )
+  
 endmacro()
 
 # download and build
 
 fetch_open3d()
 foreach(abi ${NDK_DEFAULT_ABIS})
-  crosscompile_open3d(${abi})
+  if("${abi}" STREQUAL "armeabi-v7a" OR "${abi}" STREQUAL "arm64-v8a")
+	crosscompile_open3d(${abi})
+  endif()
 endforeach()

@@ -1,3 +1,11 @@
+# Fork updates
+
+The update that made in this fork: 
+1. Open3D version from 0.7.0 to 0.8.0, 0.9.0 has Possion Surface Reconstruction that is hard to compile. 
+0.8.0 has enough point cloud processing functions. 
+2. The original repo removes Tools and Visualization, in this fork IO module is removed since some external libraries are hard to compile (turbojpeg).
+3. The abi includes armeabi-v7a and arm64-v8a. 
+
 # Building Open3D core for Android
 
 CMake scripts for cross-compiling the core library of [Open3D](http://www.open3d.org/) for Android and linking to it with Android Studio.
