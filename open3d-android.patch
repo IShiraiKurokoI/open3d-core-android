@@ -1,8 +1,8 @@
 diff --git a/3rdparty/CMakeLists.txt b/3rdparty/CMakeLists.txt
-index 2e8b0640..2bfa5109 100644
+index 1f3d71b3..fec6ab2d 100644
 --- a/3rdparty/CMakeLists.txt
 +++ b/3rdparty/CMakeLists.txt
-@@ -57,8 +57,8 @@ else ()
+@@ -58,8 +58,8 @@ else ()
  endif ()
  
  if (BUILD_GLEW)
@@ -13,7 +13,7 @@ index 2e8b0640..2bfa5109 100644
  endif ()
  
  # GLFW
-@@ -93,18 +93,18 @@ else ()
+@@ -94,14 +94,14 @@ else ()
  endif ()
  
  if (BUILD_GLFW)
@@ -27,18 +27,24 @@ index 2e8b0640..2bfa5109 100644
 +    #list(APPEND GLFW_LIBRARIES    ${OPENGL_gl_LIBRARY})
  endif ()
  
- # JPEG
- message(STATUS "Building libjpeg-turbo from source")
--include(libjpeg-turbo/libjpeg-turbo.cmake)
-+#include(libjpeg-turbo/libjpeg-turbo.cmake)
- 
  # Azure Kinect
 -include(azure_kinect/azure_kinect.cmake)
 +#include(azure_kinect/azure_kinect.cmake)
  
  # JSONCPP
  if ((APPLE) AND ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU"))
-@@ -304,7 +304,7 @@ list(APPEND 3RDPARTY_INCLUDE_DIRS
+@@ -166,8 +166,8 @@ else ()
+ endif ()
+ 
+ if (BUILD_JPEG)
+-    message(STATUS "Building libjpeg-turbo from source")
+-    include(libjpeg-turbo/libjpeg-turbo.cmake)
++    #message(STATUS "Building libjpeg-turbo from source")
++    #include(libjpeg-turbo/libjpeg-turbo.cmake)
+ endif()
+ 
+ # PyBind
+@@ -323,11 +323,11 @@ list(APPEND 3RDPARTY_INCLUDE_DIRS
       ${flann_INCLUDE_DIRS}
       ${GLEW_INCLUDE_DIRS}
       ${GLFW_INCLUDE_DIRS}
@@ -47,32 +53,39 @@ index 2e8b0640..2bfa5109 100644
       ${JSONCPP_INCLUDE_DIRS}
       ${liblzf_INCLUDE_DIRS}
       ${tomasakeninemoeller_INCLUDE_DIRS}
-@@ -317,7 +317,7 @@ list(APPEND 3RDPARTY_INCLUDE_DIRS
+-     ${librealsense_INCLUDE_DIRS}
++     #${librealsense_INCLUDE_DIRS}
+      ${PNG_INCLUDE_DIRS}
+      ${rply_INCLUDE_DIRS}
+      ${tinyfiledialogs_INCLUDE_DIRS}
+@@ -336,7 +336,7 @@ list(APPEND 3RDPARTY_INCLUDE_DIRS
       ${qhull_INCLUDE_DIRS}
       ${googletest_INCLUDE_DIRS}
       ${fmt_INCLUDE_DIRS}
 -     ${k4a_INCLUDE_DIRS}
 +     #${k4a_INCLUDE_DIRS}
+      ${poisson_INCLUDE_DIRS}
  )
  
- # set 3RDPARTY_INCLUDE_DIRS_AT_INSTALL
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index efae4c91..88a06ab8 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -215,7 +215,9 @@ endmacro(ADD_SOURCE_GROUP)
- # - 3RDPARTY_INSTALL_PREFIX: Open3D/build/3rdparty_install
- # - Headers: Open3D/build/3rdparty_install/include/extern_lib.h
- # - Libraries: Open3D/build/3rdparty_install/lib/extern_lib.a
--set(3RDPARTY_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/3rdparty_install")
-+message("3rd install prefix  : " "${CMAKE_BINARY_DIR}")
-+#set(3RDPARTY_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/3rdparty_install")
-+set(3RDPARTY_INSTALL_PREFIX "${CMAKE_BINARY_DIR}")
+@@ -356,14 +356,14 @@ list(APPEND 3RDPARTY_LIBRARY_DIRS
+     ${GLFW_LIBRARY_DIRS}
+     ${JSONCPP_LIBRARY_DIRS}
+     ${PNG_LIBRARY_DIRS}
+-    ${JPEG_TURBO_LIBRARY_DIRS}
++    #${JPEG_TURBO_LIBRARY_DIRS}
+ )
  
- # 3rd-party libraries using the ExternalProject_Add approach will install
- # headers in Open3D/build/3rdparty_install/include. We prioritize this include
+ # set 3RDPARTY_LIBRARIES
+ list(APPEND 3RDPARTY_LIBRARIES
+      ${GLEW_LIBRARIES}
+      ${GLFW_LIBRARIES}
+-     ${JPEG_TURBO_LIBRARIES}
++     #${JPEG_TURBO_LIBRARIES}
+      ${JSONCPP_LIBRARIES}
+      ${PNG_LIBRARIES}
+      ${tinyfiledialogs_LIBRARIES}
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 1be08a2c..99e97eda 100644
+index 761a6219..70f01715 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -9,7 +9,7 @@ function(ShowAndAbortOnWarning trgt)
@@ -122,21 +135,21 @@ index 32186252..3d8831e0 100644
  
  target_link_libraries(${CMAKE_PROJECT_NAME}
 diff --git a/src/Open3D/Open3D.h.in b/src/Open3D/Open3D.h.in
-index ef05bd87..5523060a 100644
+index 6e0adceb..216ec698 100644
 --- a/src/Open3D/Open3D.h.in
 +++ b/src/Open3D/Open3D.h.in
-@@ -65,6 +65,7 @@
- #include "Open3D/Utility/FileSystem.h"
- #include "Open3D/Utility/Helper.h"
- #include "Open3D/Utility/Timer.h"
-+/*
+@@ -68,6 +68,7 @@
  #include "Open3D/Visualization/Utility/DrawGeometry.h"
  #include "Open3D/Visualization/Utility/SelectionPolygon.h"
  #include "Open3D/Visualization/Utility/SelectionPolygonVolume.h"
-@@ -75,6 +76,7 @@
- #include "Open3D/Visualization/Visualizer/VisualizerWithCustomAnimation.h"
++/*
+ #include "Open3D/Visualization/Visualizer/ViewControl.h"
+ #include "Open3D/Visualization/Visualizer/ViewControlWithCustomAnimation.h"
+ #include "Open3D/Visualization/Visualizer/ViewControlWithEditing.h"
+@@ -76,6 +77,7 @@
  #include "Open3D/Visualization/Visualizer/VisualizerWithEditing.h"
  #include "Open3D/Visualization/Visualizer/VisualizerWithKeyCallback.h"
+ #include "Open3D/Visualization/Visualizer/VisualizerWithVertexSelection.h"
 +*/
  
  // clang-format off

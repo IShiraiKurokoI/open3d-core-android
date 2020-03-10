@@ -33,6 +33,7 @@ include(${ANDROID_NDK}/build/cmake/abis.cmake)
 # git diff > open3d-android.patch
 # don't use PowerShell, it screws up encoding
 set(open3d_patch ${CMAKE_CURRENT_SOURCE_DIR}/open3d-android.patch)
+set(possion_patch ${CMAKE_CURRENT_SOURCE_DIR}/PossionRecon-android.patch)
 set(open3d_config ${CMAKE_CURRENT_SOURCE_DIR}/open3d-android.config.cmake)
 
 # setup build macros
@@ -45,16 +46,18 @@ set(base "${CMAKE_BINARY_DIR}/CMakeExternals")
 # CMake will figure out the source, build, etc. dirs automatically
 set_property(DIRECTORY PROPERTY EP_BASE ${base})
 
+
+#message("hahaha " ${CMAKE_SOURCE_DIR})
 # Download Open3D once
 macro(fetch_open3d)
   ExternalProject_Add(
     open3d-fetch
     # no SOURCE_DIR, let CMake figure it out based on EP_BASE
     GIT_REPOSITORY https://github.com/intel-isl/Open3D.git
-    GIT_TAG v0.8.0
-    GIT_SHALLOW true
-    PATCH_COMMAND ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${open3d_patch}
-    # override default commands so CMake isn't invoked
+    GIT_TAG v0.9.0
+	GIT_SHALLOW true
+    PATCH_COMMAND ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${open3d_patch} && ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${possion_patch} --directory=${CMAKE_SOURCE_DIR}/build/CMakeExternals/Source/open3d-fetch/3rdparty/PoissonRecon --unsafe-paths
+	# override default commands so CMake isn't invoked
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
