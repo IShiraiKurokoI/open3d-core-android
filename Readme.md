@@ -1,7 +1,7 @@
 # Change 
 1. build.bat ( use default ndk path)
 2. it only work window10 ( ubuntu 18.04 is not working ) 
-3. add install folder
+
 
 # Fork updates
 
