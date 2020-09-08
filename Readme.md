@@ -1,3 +1,6 @@
+# setting
+ln -s /home/{userid}/Android/Sdk/ndk/20.1.5948944/ /home/{userid}/Android/Sdk/ndk-bundle
+
 # Change 
 1. build.bat ( use default ndk path)
 2. it only work window10 ( ubuntu 18.04 is not working ) 
