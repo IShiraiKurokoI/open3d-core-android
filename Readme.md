@@ -1,18 +1,8 @@
-# setting
-ln -s /home/{userid}/Android/Sdk/ndk/20.1.5948944/ /home/{userid}/Android/Sdk/ndk-bundle
-
-# Change 
-1. build.bat ( use default ndk path)
-2. it only work window10 ( ubuntu 18.04 is not working ) 
-3. builted install folder ==> https://drive.google.com/file/d/13sgqoZPQAHUfYZJvsO9sRcZhcYWh-Z_H/view?usp=sharing
-
 # Fork updates
 
 The update that made in this fork: 
-1. Open3D version from 0.7.0 to 0.8.0, and 0.9.0. 
-For 0.9.0, it has PossionRecon-android.patch for the submodule PossionRecon.
-2. The original repo removes Tools and Visualization, in this fork IO module is removed since some external libraries are hard to compile (turbojpeg).
-3. The abi includes armeabi-v7a and arm64-v8a. 
+1. Open3D version 0.9.0. 
+2. The abi includes armeabi-v7a and arm64-v8a. 
 
 # Building Open3D core for Android
 
@@ -24,7 +14,7 @@ Tested with:
 - CMake 3.14.1
 - Android Studio 3.4.1 with Gradle plugin 3.4.1
 - Bundled Android NDK r20
-- Open3D 0.7.0
+- Open3D 0.9.0
 
 Should work on Linux hosts, too, but it's untested.
 
