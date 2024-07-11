@@ -54,9 +54,9 @@ macro(fetch_open3d)
     open3d-fetch
     # no SOURCE_DIR, let CMake figure it out based on EP_BASE
     GIT_REPOSITORY https://github.com/intel-isl/Open3D.git
-    GIT_TAG v0.10.0
+    GIT_TAG v0.9.0
 	GIT_SHALLOW true
-    PATCH_COMMAND ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${open3d_patch} && ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${possion_patch} --directory=${CMAKE_SOURCE_DIR}/build/CMakeExternals/Source/open3d-fetch/3rdparty/PoissonRecon --unsafe-paths
+    PATCH_COMMAND ${GIT_EXECUTABLE} apply --reject --whitespace=fix --allow-empty ${open3d_patch} && ${GIT_EXECUTABLE} apply --reject --whitespace=fix ${possion_patch} --directory=${CMAKE_SOURCE_DIR}/build/CMakeExternals/Source/open3d-fetch/3rdparty/PoissonRecon --unsafe-paths
 	# override default commands so CMake isn't invoked
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""

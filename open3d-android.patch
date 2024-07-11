@@ -1,5 +1,5 @@
 diff --git a/3rdparty/CMakeLists.txt b/3rdparty/CMakeLists.txt
-index 1f3d71b3..fec6ab2d 100644
+index 1f3d71b34..fec6ab2db 100644
 --- a/3rdparty/CMakeLists.txt
 +++ b/3rdparty/CMakeLists.txt
 @@ -58,8 +58,8 @@ else ()
@@ -85,7 +85,7 @@ index 1f3d71b3..fec6ab2d 100644
       ${PNG_LIBRARIES}
       ${tinyfiledialogs_LIBRARIES}
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 761a6219..70f01715 100644
+index 761a62199..70f017156 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
 @@ -9,7 +9,7 @@ function(ShowAndAbortOnWarning trgt)
@@ -98,27 +98,32 @@ index 761a6219..70f01715 100644
      add_subdirectory(UnitTest)
  endif ()
 diff --git a/src/Open3D/CMakeLists.txt b/src/Open3D/CMakeLists.txt
-index 32186252..3d8831e0 100644
+index 321862527..92fa4dcc1 100644
 --- a/src/Open3D/CMakeLists.txt
 +++ b/src/Open3D/CMakeLists.txt
-@@ -12,8 +12,8 @@ add_subdirectory(Integration)
- add_subdirectory(Odometry)
+@@ -13,7 +13,7 @@ add_subdirectory(Odometry)
  add_subdirectory(Registration)
  add_subdirectory(Utility)
--add_subdirectory(IO)
+ add_subdirectory(IO)
 -add_subdirectory(Visualization)
-+#add_subdirectory(IO)
 +#add_subdirectory(Visualization)
  
  # Source group for Visual Studio
  ADD_SOURCE_GROUP(Camera)
-@@ -46,8 +46,8 @@ add_library(${CMAKE_PROJECT_NAME}
-     $<TARGET_OBJECTS:Odometry>
+@@ -24,7 +24,7 @@ ADD_SOURCE_GROUP(Odometry)
+ ADD_SOURCE_GROUP(Registration)
+ ADD_SOURCE_GROUP(Utility)
+ ADD_SOURCE_GROUP(IO)
+-ADD_SOURCE_GROUP(Visualization)
++#ADD_SOURCE_GROUP(Visualization)
+ 
+ # Install headers
+ install(DIRECTORY   "${CMAKE_CURRENT_SOURCE_DIR}"
+@@ -47,7 +47,7 @@ add_library(${CMAKE_PROJECT_NAME}
      $<TARGET_OBJECTS:Registration>
      $<TARGET_OBJECTS:Utility>
--    $<TARGET_OBJECTS:IO>
+     $<TARGET_OBJECTS:IO>
 -    $<TARGET_OBJECTS:Visualization>
-+    #$<TARGET_OBJECTS:IO>
 +    #$<TARGET_OBJECTS:Visualization>
  )
  ShowAndAbortOnWarning(${CMAKE_PROJECT_NAME})
@@ -134,23 +139,3153 @@ index 32186252..3d8831e0 100644
  endif ()
  
  target_link_libraries(${CMAKE_PROJECT_NAME}
+diff --git a/src/Open3D/IO/FileFormat/FileJPG.cpp b/src/Open3D/IO/FileFormat/FileJPG.cpp
+index 2e8503b60..00615c344 100644
+--- a/src/Open3D/IO/FileFormat/FileJPG.cpp
++++ b/src/Open3D/IO/FileFormat/FileJPG.cpp
+@@ -27,8 +27,6 @@
+ #include <cstddef>
+ #include <cstdio>
+ 
+-#include <jpeglib.h>  // Include after cstddef to define size_t
+-
+ #include "Open3D/IO/ClassIO/ImageIO.h"
+ #include "Open3D/Utility/Console.h"
+ #include "Open3D/Utility/FileSystem.h"
+@@ -37,109 +35,14 @@ namespace open3d {
+ namespace io {
+ 
+ bool ReadImageFromJPG(const std::string &filename, geometry::Image &image) {
+-    struct jpeg_decompress_struct cinfo;
+-    struct jpeg_error_mgr jerr;
+-    FILE *file_in;
+-    JSAMPARRAY buffer;
+-
+-    if ((file_in = utility::filesystem::FOpen(filename, "rb")) == NULL) {
+-        utility::LogWarning("Read JPG failed: unable to open file: {}",
+-                            filename);
+-        return false;
+-    }
+-
+-    cinfo.err = jpeg_std_error(&jerr);
+-    jpeg_create_decompress(&cinfo);
+-    jpeg_stdio_src(&cinfo, file_in);
+-    jpeg_read_header(&cinfo, TRUE);
+-
+-    // We only support two channel types: gray, and RGB.
+-    int num_of_channels = 3;
+-    int bytes_per_channel = 1;
+-    switch (cinfo.jpeg_color_space) {
+-        case JCS_RGB:
+-        case JCS_YCbCr:
+-            cinfo.out_color_space = JCS_RGB;
+-            cinfo.out_color_components = 3;
+-            num_of_channels = 3;
+-            break;
+-        case JCS_GRAYSCALE:
+-            cinfo.jpeg_color_space = JCS_GRAYSCALE;
+-            cinfo.out_color_components = 1;
+-            num_of_channels = 1;
+-            break;
+-        case JCS_CMYK:
+-        case JCS_YCCK:
+-        default:
+-            utility::LogWarning("Read JPG failed: color space not supported.");
+-            jpeg_destroy_decompress(&cinfo);
+-            fclose(file_in);
+-            return false;
+-    }
+-    jpeg_start_decompress(&cinfo);
+-    image.Prepare(cinfo.output_width, cinfo.output_height, num_of_channels,
+-                  bytes_per_channel);
+-    int row_stride = cinfo.output_width * cinfo.output_components;
+-    buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr)&cinfo, JPOOL_IMAGE,
+-                                        row_stride, 1);
+-    uint8_t *pdata = image.data_.data();
+-    while (cinfo.output_scanline < cinfo.output_height) {
+-        jpeg_read_scanlines(&cinfo, buffer, 1);
+-        memcpy(pdata, buffer[0], row_stride);
+-        pdata += row_stride;
+-    }
+-    jpeg_finish_decompress(&cinfo);
+-    jpeg_destroy_decompress(&cinfo);
+-    fclose(file_in);
++    
+     return true;
+ }
+ 
+ bool WriteImageToJPG(const std::string &filename,
+                      const geometry::Image &image,
+                      int quality /* = 90*/) {
+-    if (image.HasData() == false) {
+-        utility::LogWarning("Write JPG failed: image has no data.");
+-        return false;
+-    }
+-    if (image.bytes_per_channel_ != 1 ||
+-        (image.num_of_channels_ != 1 && image.num_of_channels_ != 3)) {
+-        utility::LogWarning("Write JPG failed: unsupported image data.");
+-        return false;
+-    }
+-    struct jpeg_compress_struct cinfo;
+-    struct jpeg_error_mgr jerr;
+-    FILE *file_out;
+-    JSAMPROW row_pointer[1];
+-
+-    if ((file_out = utility::filesystem::FOpen(filename, "wb")) == NULL) {
+-        utility::LogWarning("Write JPG failed: unable to open file: {}",
+-                            filename);
+-        return false;
+-    }
+-
+-    cinfo.err = jpeg_std_error(&jerr);
+-    jpeg_create_compress(&cinfo);
+-    jpeg_stdio_dest(&cinfo, file_out);
+-    cinfo.image_width = image.width_;
+-    cinfo.image_height = image.height_;
+-    cinfo.input_components = image.num_of_channels_;
+-    cinfo.in_color_space =
+-            (cinfo.input_components == 1 ? JCS_GRAYSCALE : JCS_RGB);
+-    jpeg_set_defaults(&cinfo);
+-    jpeg_set_quality(&cinfo, quality, TRUE);
+-    jpeg_start_compress(&cinfo, TRUE);
+-    int row_stride = image.width_ * image.num_of_channels_;
+-    const uint8_t *pdata = image.data_.data();
+-    std::vector<uint8_t> buffer(row_stride);
+-    while (cinfo.next_scanline < cinfo.image_height) {
+-        memcpy(buffer.data(), pdata, row_stride);
+-        row_pointer[0] = buffer.data();
+-        jpeg_write_scanlines(&cinfo, row_pointer, 1);
+-        pdata += row_stride;
+-    }
+-    jpeg_finish_compress(&cinfo);
+-    fclose(file_out);
+-    jpeg_destroy_compress(&cinfo);
++                        
+     return true;
+ }
+ 
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.cpp b/src/Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.cpp
+deleted file mode 100644
+index d336f9ace..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.cpp
++++ /dev/null
+@@ -1,121 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2019 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-// Copyright (c) Microsoft Corporation. All rights reserved.
+-// Licensed under the MIT License.
+-
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.h"
+-
+-#include <assert.h>
+-#include <Eigen/Core>
+-#include <algorithm>
+-#include <atomic>
+-#include <ctime>
+-#include <iostream>
+-
+-#include <k4a/k4a.h>
+-#include <k4arecord/record.h>
+-
+-#include "Open3D/Geometry/RGBDImage.h"
+-#include "Open3D/IO/Sensor/AzureKinect/K4aPlugin.h"
+-#include "Open3D/IO/Sensor/AzureKinect/MKVReader.h"
+-#include "Open3D/Visualization/Utility/ColorMap.h"
+-#include "Open3D/Visualization/Visualizer/VisualizerWithKeyCallback.h"
+-
+-namespace open3d {
+-namespace io {
+-
+-AzureKinectRecorder::AzureKinectRecorder(
+-        const AzureKinectSensorConfig& sensor_config, size_t sensor_index)
+-    : RGBDRecorder(),
+-      sensor_(AzureKinectSensor(sensor_config)),
+-      device_index_(sensor_index) {}
+-
+-AzureKinectRecorder::~AzureKinectRecorder() { CloseRecord(); }
+-
+-bool AzureKinectRecorder::InitSensor() {
+-    return sensor_.Connect(device_index_);
+-}
+-
+-bool AzureKinectRecorder::OpenRecord(const std::string& filename) {
+-    if (!is_record_created_) {
+-        if (K4A_FAILED(k4a_plugin::k4a_record_create(
+-                    filename.c_str(), sensor_.device_,
+-                    sensor_.sensor_config_.ConvertToNativeConfig(),
+-                    &recording_))) {
+-            utility::LogWarning("Unable to create recording file: {}",
+-                                filename);
+-            return false;
+-        }
+-        if (K4A_FAILED(k4a_plugin::k4a_record_write_header(recording_))) {
+-            utility::LogWarning("Unable to write header");
+-            return false;
+-        }
+-        utility::LogInfo("Writing to header");
+-
+-        is_record_created_ = true;
+-    }
+-    return true;
+-}
+-
+-bool AzureKinectRecorder::CloseRecord() {
+-    if (is_record_created_) {
+-        utility::LogInfo("Saving recording...");
+-        if (K4A_FAILED(k4a_plugin::k4a_record_flush(recording_))) {
+-            utility::LogWarning("Unable to flush record file");
+-            return false;
+-        }
+-        k4a_plugin::k4a_record_close(recording_);
+-        utility::LogInfo("Done");
+-
+-        is_record_created_ = false;
+-    }
+-    return true;
+-}
+-
+-std::shared_ptr<geometry::RGBDImage> AzureKinectRecorder::RecordFrame(
+-        bool write, bool enable_align_depth_to_color) {
+-    k4a_capture_t capture = sensor_.CaptureRawFrame();
+-    if (capture != nullptr && is_record_created_ && write) {
+-        if (K4A_FAILED(k4a_plugin::k4a_record_write_capture(recording_,
+-                                                            capture))) {
+-            utility::LogError("Unable to write to capture");
+-        }
+-    }
+-
+-    auto im_rgbd = AzureKinectSensor::DecompressCapture(
+-            capture, enable_align_depth_to_color
+-                             ? sensor_.transform_depth_to_color_
+-                             : nullptr);
+-    if (im_rgbd == nullptr) {
+-        utility::LogInfo("Invalid capture, skipping this frame");
+-        return nullptr;
+-    }
+-    k4a_plugin::k4a_capture_release(capture);
+-    return im_rgbd;
+-}
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.h b/src/Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.h
+deleted file mode 100644
+index 80723a102..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.h
++++ /dev/null
+@@ -1,71 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2019 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-#include <atomic>
+-#include <memory>
+-#include <string>
+-
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h"
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h"
+-#include "Open3D/IO/Sensor/RGBDRecorder.h"
+-
+-struct _k4a_record_t;  // typedef _k4a_record_t* k4a_record_t;
+-
+-namespace open3d {
+-
+-namespace geometry {
+-class RGBDImage;
+-class Image;
+-}  // namespace geometry
+-
+-namespace io {
+-
+-class AzureKinectRecorder : public RGBDRecorder {
+-public:
+-    AzureKinectRecorder(const AzureKinectSensorConfig& sensor_config,
+-                        size_t sensor_index);
+-    ~AzureKinectRecorder() override;
+-
+-    bool InitSensor() override;
+-    bool OpenRecord(const std::string& filename) override;
+-    bool CloseRecord() override;
+-    std::shared_ptr<geometry::RGBDImage> RecordFrame(
+-            bool write, bool enable_align_depth_to_color) override;
+-
+-    bool IsRecordCreated() { return is_record_created_; }
+-
+-protected:
+-    AzureKinectSensor sensor_;
+-    _k4a_record_t* recording_;
+-    size_t device_index_;
+-
+-    bool is_record_created_ = false;
+-};
+-
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.cpp b/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.cpp
+deleted file mode 100644
+index 03ada18be..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.cpp
++++ /dev/null
+@@ -1,332 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h"
+-
+-#include <k4a/k4a.h>
+-#include <k4arecord/record.h>
+-#include <turbojpeg.h>
+-#include <memory>
+-
+-#include "Open3D/Geometry/RGBDImage.h"
+-#include "Open3D/IO/Sensor/AzureKinect/K4aPlugin.h"
+-
+-namespace open3d {
+-namespace io {
+-
+-AzureKinectSensor::AzureKinectSensor(
+-        const AzureKinectSensorConfig &sensor_config)
+-    : RGBDSensor(), sensor_config_(sensor_config) {}
+-
+-AzureKinectSensor::~AzureKinectSensor() {
+-    k4a_plugin::k4a_device_stop_cameras(device_);
+-    k4a_plugin::k4a_device_close(device_);
+-}
+-
+-bool AzureKinectSensor::Connect(size_t sensor_index) {
+-    utility::LogInfo("AzureKinectSensor::Connect");
+-    utility::LogInfo("sensor_index {}", sensor_index);
+-    auto device_config = sensor_config_.ConvertToNativeConfig();
+-
+-    // check mode
+-    int camera_fps;
+-    switch (device_config.camera_fps) {
+-        case K4A_FRAMES_PER_SECOND_5:
+-            camera_fps = 5;
+-            break;
+-        case K4A_FRAMES_PER_SECOND_15:
+-            camera_fps = 15;
+-            break;
+-        case K4A_FRAMES_PER_SECOND_30:
+-            camera_fps = 30;
+-            break;
+-        default:
+-            camera_fps = 30;
+-            break;
+-    }
+-    timeout_ = int(1000.0f / camera_fps);
+-
+-    if (device_config.color_resolution == K4A_COLOR_RESOLUTION_OFF &&
+-        device_config.depth_mode == K4A_DEPTH_MODE_OFF) {
+-        utility::LogWarning(
+-                "Config error: either the color or depth modes must be "
+-                "enabled to record.");
+-        return false;
+-    }
+-
+-    // check available devices
+-    const uint32_t installed_devices =
+-            k4a_plugin::k4a_device_get_installed_count();
+-    if (sensor_index >= installed_devices) {
+-        utility::LogWarning("Device not found.");
+-        return false;
+-    }
+-
+-    // open device
+-    if (K4A_FAILED(k4a_plugin::k4a_device_open(sensor_index, &device_))) {
+-        utility::LogWarning(
+-                "Runtime error: k4a_plugin::k4a_device_open() failed");
+-        return false;
+-    }
+-
+-    // get and print device info
+-    PrintFirmware(device_);
+-
+-    if (K4A_FAILED(k4a_plugin::k4a_device_start_cameras(device_,
+-                                                        &device_config))) {
+-        utility::LogWarning(
+-                "Runtime error: k4a_plugin::k4a_device_set_color_control() "
+-                "failed");
+-        k4a_plugin::k4a_device_close(device_);
+-        return false;
+-    }
+-
+-    // set color control, assume absoluteExposureValue == 0
+-    if (K4A_FAILED(k4a_plugin::k4a_device_set_color_control(
+-                device_, K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE,
+-                K4A_COLOR_CONTROL_MODE_AUTO, 0))) {
+-        utility::LogWarning(
+-                "Runtime error: k4a_plugin::k4a_device_set_color_control() "
+-                "failed");
+-        k4a_plugin::k4a_device_close(device_);
+-        return false;
+-    }
+-
+-    // set calibration
+-    k4a_calibration_t calibration;
+-    k4a_plugin::k4a_device_get_calibration(device_, device_config.depth_mode,
+-                                           device_config.color_resolution,
+-                                           &calibration);
+-    transform_depth_to_color_ =
+-            k4a_plugin::k4a_transformation_create(&calibration);
+-
+-    return true;
+-}
+-
+-k4a_capture_t AzureKinectSensor::CaptureRawFrame() const {
+-    k4a_capture_t capture;
+-    auto result =
+-            k4a_plugin::k4a_device_get_capture(device_, &capture, timeout_);
+-    if (result == K4A_WAIT_RESULT_TIMEOUT) {
+-        return nullptr;
+-    } else if (result != K4A_WAIT_RESULT_SUCCEEDED) {
+-        utility::LogWarning(
+-                "Runtime error: k4a_plugin::k4a_device_get_capture() returned "
+-                "{}",
+-                result);
+-        return nullptr;
+-    }
+-
+-    return capture;
+-}
+-
+-std::shared_ptr<geometry::RGBDImage> AzureKinectSensor::CaptureFrame(
+-        bool enable_align_depth_to_color) const {
+-    k4a_capture_t capture = CaptureRawFrame();
+-    auto im_rgbd = DecompressCapture(
+-            capture,
+-            enable_align_depth_to_color ? transform_depth_to_color_ : nullptr);
+-    k4a_plugin::k4a_capture_release(capture);
+-    return im_rgbd;
+-}
+-
+-void ConvertBGRAToRGB(geometry::Image &bgra, geometry::Image &rgb) {
+-    if (bgra.bytes_per_channel_ != 1) {
+-        utility::LogError("BGRA input image must have 1 byte per channel.");
+-    }
+-    if (rgb.bytes_per_channel_ != 1) {
+-        utility::LogError("RGB output image must have 1 byte per channel.");
+-    }
+-    if (bgra.num_of_channels_ != 4) {
+-        utility::LogError("BGRA input image must have 4 channels.");
+-    }
+-    if (rgb.num_of_channels_ != 3) {
+-        utility::LogError("RGB output image must have 3 channels.");
+-    }
+-    if (bgra.width_ != rgb.width_ || bgra.height_ != rgb.height_) {
+-        utility::LogError(
+-                "BGRA input image and RGB output image have different "
+-                "dimensions.");
+-    }
+-
+-#ifdef _OPENMP
+-#ifdef _WIN32
+-#pragma omp parallel for schedule(static)
+-#else
+-#pragma omp parallel for collapse(3) schedule(static)
+-#endif
+-#endif
+-    for (int v = 0; v < bgra.height_; ++v) {
+-        for (int u = 0; u < bgra.width_; ++u) {
+-            for (int c = 0; c < 3; ++c) {
+-                *rgb.PointerAt<uint8_t>(u, v, c) =
+-                        *bgra.PointerAt<uint8_t>(u, v, 2 - c);
+-            }
+-        }
+-    }
+-}
+-
+-bool AzureKinectSensor::PrintFirmware(k4a_device_t device) {
+-    char serial_number_buffer[256];
+-    size_t serial_number_buffer_size = sizeof(serial_number_buffer);
+-    if (K4A_BUFFER_RESULT_SUCCEEDED !=
+-        k4a_plugin::k4a_device_get_serialnum(device, serial_number_buffer,
+-                                             &serial_number_buffer_size)) {
+-        utility::LogWarning(
+-                "Runtime error: k4a_plugin::k4a_device_get_serialnum() "
+-                "failed");
+-        return false;
+-    }
+-
+-    k4a_hardware_version_t version_info;
+-    if (K4A_FAILED(k4a_plugin::k4a_device_get_version(device, &version_info))) {
+-        utility::LogWarning(
+-                "Runtime error: k4a_plugin::k4a_device_get_version() failed");
+-        return false;
+-    }
+-
+-    utility::LogInfo("Serial number: {}", serial_number_buffer);
+-    utility::LogInfo("Firmware build: {}",
+-                     (version_info.firmware_build == K4A_FIRMWARE_BUILD_RELEASE
+-                              ? "Rel"
+-                              : "Dbg"));
+-    utility::LogInfo("> Color: {}.{}.{}", version_info.rgb.major,
+-                     version_info.rgb.minor, version_info.rgb.iteration);
+-    utility::LogInfo("> Depth: {}.{}.{}[{}.{}]", version_info.depth.major,
+-                     version_info.depth.minor, version_info.depth.iteration,
+-                     version_info.depth_sensor.major,
+-                     version_info.depth_sensor.minor);
+-    return true;
+-}
+-
+-bool AzureKinectSensor::ListDevices() {
+-    uint32_t device_count = k4a_plugin::k4a_device_get_installed_count();
+-    if (device_count > 0) {
+-        for (uint8_t i = 0; i < device_count; i++) {
+-            utility::LogInfo("Device index {}", i);
+-            k4a_device_t device;
+-            if (K4A_SUCCEEDED(k4a_plugin::k4a_device_open(i, &device))) {
+-                AzureKinectSensor::PrintFirmware(device);
+-                k4a_plugin::k4a_device_close(device);
+-            } else {
+-                utility::LogWarning("Device Open Failed");
+-                return false;
+-            }
+-        }
+-    } else {
+-        utility::LogError("No devices connected.");
+-    }
+-
+-    return true;
+-}
+-
+-std::shared_ptr<geometry::RGBDImage> AzureKinectSensor::DecompressCapture(
+-        k4a_capture_t capture, k4a_transformation_t transformation) {
+-    static std::shared_ptr<geometry::Image> color_buffer = nullptr;
+-    static std::shared_ptr<geometry::RGBDImage> rgbd_buffer = nullptr;
+-
+-    if (color_buffer == nullptr) {
+-        color_buffer = std::make_shared<geometry::Image>();
+-    }
+-    if (rgbd_buffer == nullptr) {
+-        rgbd_buffer = std::make_shared<geometry::RGBDImage>();
+-    }
+-
+-    k4a_image_t k4a_color = k4a_plugin::k4a_capture_get_color_image(capture);
+-    k4a_image_t k4a_depth = k4a_plugin::k4a_capture_get_depth_image(capture);
+-    if (k4a_color == nullptr || k4a_depth == nullptr) {
+-        utility::LogDebug("Skipping empty captures.");
+-        return nullptr;
+-    }
+-
+-    /* Process color */
+-    if (K4A_IMAGE_FORMAT_COLOR_MJPG !=
+-        k4a_plugin::k4a_image_get_format(k4a_color)) {
+-        utility::LogWarning(
+-                "Unexpected image format. The stream may have "
+-                "corrupted.");
+-        return nullptr;
+-    }
+-
+-    int width = k4a_plugin::k4a_image_get_width_pixels(k4a_color);
+-    int height = k4a_plugin::k4a_image_get_height_pixels(k4a_color);
+-
+-    /* resize */
+-    rgbd_buffer->color_.Prepare(width, height, 3, sizeof(uint8_t));
+-    color_buffer->Prepare(width, height, 4, sizeof(uint8_t));
+-
+-    tjhandle tjHandle;
+-    tjHandle = tjInitDecompress();
+-    if (0 !=
+-        tjDecompress2(tjHandle, k4a_plugin::k4a_image_get_buffer(k4a_color),
+-                      static_cast<unsigned long>(
+-                              k4a_plugin::k4a_image_get_size(k4a_color)),
+-                      color_buffer->data_.data(), width, 0 /* pitch */, height,
+-                      TJPF_BGRA, TJFLAG_FASTDCT | TJFLAG_FASTUPSAMPLE)) {
+-        utility::LogWarning("Failed to decompress color image.");
+-        return nullptr;
+-    }
+-    tjDestroy(tjHandle);
+-    ConvertBGRAToRGB(*color_buffer, rgbd_buffer->color_);
+-
+-    /* transform depth to color plane */
+-    k4a_image_t k4a_transformed_depth = nullptr;
+-    if (transformation) {
+-        rgbd_buffer->depth_.Prepare(width, height, 1, sizeof(uint16_t));
+-        k4a_plugin::k4a_image_create_from_buffer(
+-                K4A_IMAGE_FORMAT_DEPTH16, width, height,
+-                width * sizeof(uint16_t), rgbd_buffer->depth_.data_.data(),
+-                width * height * sizeof(uint16_t), NULL, NULL,
+-                &k4a_transformed_depth);
+-        if (K4A_RESULT_SUCCEEDED !=
+-            k4a_plugin::k4a_transformation_depth_image_to_color_camera(
+-                    transformation, k4a_depth, k4a_transformed_depth)) {
+-            utility::LogWarning(
+-                    "Failed to transform depth frame to color frame.");
+-            return nullptr;
+-        }
+-    } else {
+-        rgbd_buffer->depth_.Prepare(
+-                k4a_plugin::k4a_image_get_width_pixels(k4a_depth),
+-                k4a_plugin::k4a_image_get_height_pixels(k4a_depth), 1,
+-                sizeof(uint16_t));
+-        memcpy(rgbd_buffer->depth_.data_.data(),
+-               k4a_plugin::k4a_image_get_buffer(k4a_depth),
+-               k4a_plugin::k4a_image_get_size(k4a_depth));
+-    }
+-
+-    /* process depth */
+-    k4a_plugin::k4a_image_release(k4a_color);
+-    k4a_plugin::k4a_image_release(k4a_depth);
+-    if (transformation) {
+-        k4a_plugin::k4a_image_release(k4a_transformed_depth);
+-    }
+-
+-    return rgbd_buffer;
+-}
+-
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h b/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h
+deleted file mode 100644
+index 287fd9d25..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h
++++ /dev/null
+@@ -1,76 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-#include <memory>
+-
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h"
+-#include "Open3D/IO/Sensor/RGBDSensor.h"
+-
+-struct _k4a_capture_t;         // typedef _k4a_capture_t* k4a_capture_t;
+-struct _k4a_device_t;          // typedef _k4a_device_t* k4a_device_t;
+-struct _k4a_transformation_t;  // typedef _k4a_transformation_t*
+-                               // k4a_transformation_t;
+-
+-namespace open3d {
+-namespace geometry {
+-class RGBDImage;
+-class Image;
+-}  // namespace geometry
+-
+-namespace io {
+-
+-// Avoid including AzureKinectRecorder.h
+-class AzureKinectRecorder;
+-
+-class AzureKinectSensor : public RGBDSensor {
+-public:
+-    AzureKinectSensor(const AzureKinectSensorConfig& sensor_config);
+-    ~AzureKinectSensor();
+-
+-    bool Connect(size_t sensor_index) override;
+-    std::shared_ptr<geometry::RGBDImage> CaptureFrame(
+-            bool enable_align_depth_to_color) const override;
+-
+-    static bool PrintFirmware(_k4a_device_t* device);
+-    static bool ListDevices();
+-    static std::shared_ptr<geometry::RGBDImage> DecompressCapture(
+-            _k4a_capture_t* capture, _k4a_transformation_t* transformation);
+-
+-protected:
+-    _k4a_capture_t* CaptureRawFrame() const;
+-
+-    AzureKinectSensorConfig sensor_config_;
+-    _k4a_transformation_t* transform_depth_to_color_;
+-    _k4a_device_t* device_;
+-    int timeout_;
+-
+-    friend class AzureKinectRecorder;
+-};
+-
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.cpp b/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.cpp
+deleted file mode 100644
+index 13c9d4071..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.cpp
++++ /dev/null
+@@ -1,318 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h"
+-
+-#include <json/json.h>
+-#include <k4a/k4a.h>
+-#include <map>
+-#include <set>
+-#include <string>
+-#include <unordered_map>
+-
+-#include "Open3D/IO/Sensor/AzureKinect/K4aPlugin.h"
+-#include "Open3D/Utility/Console.h"
+-
+-namespace open3d {
+-namespace io {
+-
+-static std::map<k4a_image_format_t, std::string> k4a_image_format_t_to_string{
+-        {K4A_IMAGE_FORMAT_COLOR_MJPG, "K4A_IMAGE_FORMAT_COLOR_MJPG"},
+-        {K4A_IMAGE_FORMAT_COLOR_NV12, "K4A_IMAGE_FORMAT_COLOR_NV12"},
+-        {K4A_IMAGE_FORMAT_COLOR_YUY2, "K4A_IMAGE_FORMAT_COLOR_YUY2"},
+-        {K4A_IMAGE_FORMAT_COLOR_BGRA32, "K4A_IMAGE_FORMAT_COLOR_BGRA32"},
+-        {K4A_IMAGE_FORMAT_DEPTH16, "K4A_IMAGE_FORMAT_DEPTH16"},
+-        {K4A_IMAGE_FORMAT_IR16, "K4A_IMAGE_FORMAT_IR16"},
+-        {K4A_IMAGE_FORMAT_CUSTOM, "K4A_IMAGE_FORMAT_CUSTOM"},
+-};
+-
+-static std::map<k4a_color_resolution_t, std::string>
+-        k4a_color_resolution_t_to_string{
+-                {K4A_COLOR_RESOLUTION_OFF, "K4A_COLOR_RESOLUTION_OFF"},
+-                {K4A_COLOR_RESOLUTION_720P, "K4A_COLOR_RESOLUTION_720P"},
+-                {K4A_COLOR_RESOLUTION_1080P, "K4A_COLOR_RESOLUTION_1080P"},
+-                {K4A_COLOR_RESOLUTION_1440P, "K4A_COLOR_RESOLUTION_1440P"},
+-                {K4A_COLOR_RESOLUTION_1536P, "K4A_COLOR_RESOLUTION_1536P"},
+-                {K4A_COLOR_RESOLUTION_2160P, "K4A_COLOR_RESOLUTION_2160P"},
+-                {K4A_COLOR_RESOLUTION_3072P, "K4A_COLOR_RESOLUTION_3072P"},
+-        };
+-
+-static std::map<k4a_depth_mode_t, std::string> k4a_depth_mode_t_to_string{
+-        {K4A_DEPTH_MODE_OFF, "K4A_DEPTH_MODE_OFF"},
+-        {K4A_DEPTH_MODE_NFOV_2X2BINNED, "K4A_DEPTH_MODE_NFOV_2X2BINNED"},
+-        {K4A_DEPTH_MODE_NFOV_UNBINNED, "K4A_DEPTH_MODE_NFOV_UNBINNED"},
+-        {K4A_DEPTH_MODE_WFOV_2X2BINNED, "K4A_DEPTH_MODE_WFOV_2X2BINNED"},
+-        {K4A_DEPTH_MODE_WFOV_UNBINNED, "K4A_DEPTH_MODE_WFOV_UNBINNED"},
+-        {K4A_DEPTH_MODE_PASSIVE_IR, "K4A_DEPTH_MODE_PASSIVE_IR"},
+-};
+-
+-static std::map<k4a_fps_t, std::string> k4a_fps_t_to_string{
+-        {K4A_FRAMES_PER_SECOND_5, "K4A_FRAMES_PER_SECOND_5"},
+-        {K4A_FRAMES_PER_SECOND_15, "K4A_FRAMES_PER_SECOND_15"},
+-        {K4A_FRAMES_PER_SECOND_30, "K4A_FRAMES_PER_SECOND_30"},
+-};
+-
+-static std::map<k4a_wired_sync_mode_t, std::string>
+-        k4a_wired_sync_mode_t_to_string{
+-                {K4A_WIRED_SYNC_MODE_STANDALONE,
+-                 "K4A_WIRED_SYNC_MODE_STANDALONE"},
+-                {K4A_WIRED_SYNC_MODE_MASTER, "K4A_WIRED_SYNC_MODE_MASTER"},
+-                {K4A_WIRED_SYNC_MODE_SUBORDINATE,
+-                 "K4A_WIRED_SYNC_MODE_SUBORDINATE"},
+-        };
+-
+-static std::map<std::string, k4a_image_format_t> string_to_k4a_image_format_t({
+-        {"K4A_IMAGE_FORMAT_COLOR_MJPG", K4A_IMAGE_FORMAT_COLOR_MJPG},
+-        {"K4A_IMAGE_FORMAT_COLOR_NV12", K4A_IMAGE_FORMAT_COLOR_NV12},
+-        {"K4A_IMAGE_FORMAT_COLOR_YUY2", K4A_IMAGE_FORMAT_COLOR_YUY2},
+-        {"K4A_IMAGE_FORMAT_COLOR_BGRA32", K4A_IMAGE_FORMAT_COLOR_BGRA32},
+-        {"K4A_IMAGE_FORMAT_DEPTH16", K4A_IMAGE_FORMAT_DEPTH16},
+-        {"K4A_IMAGE_FORMAT_IR16", K4A_IMAGE_FORMAT_IR16},
+-        {"K4A_IMAGE_FORMAT_CUSTOM", K4A_IMAGE_FORMAT_CUSTOM},
+-});
+-
+-static std::map<std::string, k4a_color_resolution_t>
+-        string_to_k4a_color_resolution_t{
+-                {"K4A_COLOR_RESOLUTION_OFF", K4A_COLOR_RESOLUTION_OFF},
+-                {"K4A_COLOR_RESOLUTION_720P", K4A_COLOR_RESOLUTION_720P},
+-                {"K4A_COLOR_RESOLUTION_1080P", K4A_COLOR_RESOLUTION_1080P},
+-                {"K4A_COLOR_RESOLUTION_1440P", K4A_COLOR_RESOLUTION_1440P},
+-                {"K4A_COLOR_RESOLUTION_1536P", K4A_COLOR_RESOLUTION_1536P},
+-                {"K4A_COLOR_RESOLUTION_2160P", K4A_COLOR_RESOLUTION_2160P},
+-                {"K4A_COLOR_RESOLUTION_3072P", K4A_COLOR_RESOLUTION_3072P},
+-        };
+-
+-static std::map<std::string, k4a_depth_mode_t> string_to_k4a_depth_mode_t{
+-        {"K4A_DEPTH_MODE_OFF", K4A_DEPTH_MODE_OFF},
+-        {"K4A_DEPTH_MODE_NFOV_2X2BINNED", K4A_DEPTH_MODE_NFOV_2X2BINNED},
+-        {"K4A_DEPTH_MODE_NFOV_UNBINNED", K4A_DEPTH_MODE_NFOV_UNBINNED},
+-        {"K4A_DEPTH_MODE_WFOV_2X2BINNED", K4A_DEPTH_MODE_WFOV_2X2BINNED},
+-        {"K4A_DEPTH_MODE_WFOV_UNBINNED", K4A_DEPTH_MODE_WFOV_UNBINNED},
+-        {"K4A_DEPTH_MODE_PASSIVE_IR", K4A_DEPTH_MODE_PASSIVE_IR},
+-};
+-
+-static std::map<std::string, k4a_fps_t> string_to_k4a_fps_t{
+-        {"K4A_FRAMES_PER_SECOND_5", K4A_FRAMES_PER_SECOND_5},
+-        {"K4A_FRAMES_PER_SECOND_15", K4A_FRAMES_PER_SECOND_15},
+-        {"K4A_FRAMES_PER_SECOND_30", K4A_FRAMES_PER_SECOND_30},
+-};
+-
+-static std::map<std::string, k4a_wired_sync_mode_t>
+-        string_to_k4a_wired_sync_mode_t{
+-                {"K4A_WIRED_SYNC_MODE_STANDALONE",
+-                 K4A_WIRED_SYNC_MODE_STANDALONE},
+-                {"K4A_WIRED_SYNC_MODE_MASTER", K4A_WIRED_SYNC_MODE_MASTER},
+-                {"K4A_WIRED_SYNC_MODE_SUBORDINATE",
+-                 K4A_WIRED_SYNC_MODE_SUBORDINATE},
+-        };
+-
+-static std::unordered_map<std::string, std::string> standard_config{
+-        {"color_format", "K4A_IMAGE_FORMAT_COLOR_MJPG"},
+-        {"color_resolution", "K4A_COLOR_RESOLUTION_720P"},
+-        {"depth_mode", "K4A_DEPTH_MODE_WFOV_2X2BINNED"},
+-        {"camera_fps", "K4A_FRAMES_PER_SECOND_30"},
+-        {"synchronized_images_only", "false"},
+-        {"depth_delay_off_color_usec", "0"},
+-        {"wired_sync_mode", "K4A_WIRED_SYNC_MODE_STANDALONE"},
+-        {"subordinate_delay_off_master_usec", "0"},
+-        {"disable_streaming_indicator", "false"},
+-};
+-
+-AzureKinectSensorConfig::AzureKinectSensorConfig() {
+-    config_ = standard_config;
+-}
+-
+-bool AzureKinectSensorConfig::IsValidConfig(
+-        const std::unordered_map<std::string, std::string> &config,
+-        bool verbose) {
+-    bool rc = true;
+-
+-    // No extra keys
+-    for (const auto &it : config) {
+-        if (standard_config.find(it.first) == standard_config.end()) {
+-            rc = false;
+-            utility::LogWarning("IsValidConfig: Unrecognized key {}", it.first);
+-        }
+-    }
+-
+-    if (config.count("color_format") != 0 &&
+-        string_to_k4a_image_format_t.count(config.at("color_format")) == 0) {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning("IsValidConfig: color_format invalid");
+-        }
+-    }
+-
+-    if (config.count("color_resolution") != 0 &&
+-        string_to_k4a_color_resolution_t.count(config.at("color_resolution")) ==
+-                0) {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning("IsValidConfig: color_resolution invalid");
+-        }
+-    }
+-
+-    if (config.count("depth_mode") != 0 &&
+-        string_to_k4a_depth_mode_t.count(config.at("depth_mode")) == 0) {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning("IsValidConfig: depth_mode invalid");
+-        }
+-    }
+-
+-    if (config.count("camera_fps") != 0 &&
+-        string_to_k4a_fps_t.count(config.at("camera_fps")) == 0) {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning("IsValidConfig: camera_fps invalid");
+-        }
+-    } else {
+-        if (config.count("camera_fps") != 0 &&
+-            config.count("color_resolution") != 0 &&
+-            config.at("camera_fps") == "K4A_FRAMES_PER_SECOND_30" &&
+-            config.at("color_resolution") == "K4A_COLOR_RESOLUTION_3072P") {
+-            rc = false;
+-            if (verbose) {
+-                utility::LogWarning(
+-                        "K4A_COLOR_RESOLUTION_3072P does not support 30 FPS");
+-            }
+-        }
+-    }
+-
+-    if (config.count("synchronized_images_only") != 0 &&
+-        config.at("synchronized_images_only") != "true" &&
+-        config.at("synchronized_images_only") != "false") {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning(
+-                    "IsValidConfig: synchronized_images_only invalid");
+-        }
+-    }
+-
+-    if (config.count("wired_sync_mode") != 0 &&
+-        string_to_k4a_wired_sync_mode_t.count(config.at("wired_sync_mode")) ==
+-                0) {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning("IsValidConfig: wired_sync_mode invalid");
+-        }
+-    }
+-
+-    if (config.count("disable_streaming_indicator") != 0 &&
+-        config.at("disable_streaming_indicator") != "true" &&
+-        config.at("disable_streaming_indicator") != "false") {
+-        rc = false;
+-        if (verbose) {
+-            utility::LogWarning(
+-                    "IsValidConfig: disable_streaming_indicator invalid");
+-        }
+-    }
+-
+-    return rc;
+-}
+-
+-AzureKinectSensorConfig::AzureKinectSensorConfig(
+-        const std::unordered_map<std::string, std::string> &config)
+-    : AzureKinectSensorConfig() {
+-    if (!IsValidConfig(config)) {
+-        utility::LogWarning("Invalid configs, default configs will be used.");
+-        return;
+-    }
+-    for (const auto &it : config) {
+-        config_[it.first] = it.second;
+-    }
+-}
+-
+-bool AzureKinectSensorConfig::ConvertToJsonValue(Json::Value &value) const {
+-    // clang-format off
+-    value["color_format"]                      = config_.at("color_format");
+-    value["color_resolution"]                  = config_.at("color_resolution");
+-    value["depth_mode"]                        = config_.at("depth_mode");
+-    value["camera_fps"]                        = config_.at("camera_fps");
+-    value["synchronized_images_only"]          = config_.at("synchronized_images_only");
+-    value["depth_delay_off_color_usec"]        = config_.at("depth_delay_off_color_usec");
+-    value["wired_sync_mode"]                   = config_.at("wired_sync_mode");
+-    value["subordinate_delay_off_master_usec"] = config_.at("subordinate_delay_off_master_usec");
+-    value["disable_streaming_indicator"]       = config_.at("disable_streaming_indicator");
+-    // clang-format on
+-    return true;
+-}
+-
+-bool AzureKinectSensorConfig::ConvertFromJsonValue(const Json::Value &value) {
+-    // clang-format off
+-    config_["color_format"]                      = value["color_format"].asString();
+-    config_["color_resolution"]                  = value["color_resolution"].asString();
+-    config_["depth_mode"]                        = value["depth_mode"].asString();
+-    config_["camera_fps"]                        = value["camera_fps"].asString();
+-    config_["synchronized_images_only"]          = value["synchronized_images_only"].asString();
+-    config_["depth_delay_off_color_usec"]        = value["depth_delay_off_color_usec"].asString();
+-    config_["wired_sync_mode"]                   = value["wired_sync_mode"].asString();
+-    config_["subordinate_delay_off_master_usec"] = value["subordinate_delay_off_master_usec"].asString();
+-    config_["disable_streaming_indicator"]       = value["disable_streaming_indicator"].asString();
+-    // clang-format on
+-
+-    return IsValidConfig(config_, true);
+-}
+-
+-void AzureKinectSensorConfig::ConvertFromNativeConfig(
+-        const k4a_device_configuration_t &k4a_config) {
+-    // clang-format off
+-    config_["color_format"]                      = k4a_image_format_t_to_string.at(k4a_config.color_format);
+-    config_["color_resolution"]                  = k4a_color_resolution_t_to_string.at(k4a_config.color_resolution);
+-    config_["depth_mode"]                        = k4a_depth_mode_t_to_string.at(k4a_config.depth_mode);
+-    config_["camera_fps"]                        = k4a_fps_t_to_string.at(k4a_config.camera_fps);
+-    config_["synchronized_images_only"]          = k4a_config.synchronized_images_only ? "true" : "false";
+-    config_["depth_delay_off_color_usec"]        = std::to_string(k4a_config.depth_delay_off_color_usec);
+-    config_["wired_sync_mode"]                   = k4a_wired_sync_mode_t_to_string.at(k4a_config.wired_sync_mode);
+-    config_["subordinate_delay_off_master_usec"] = std::to_string(k4a_config.subordinate_delay_off_master_usec);
+-    config_["disable_streaming_indicator"]       = k4a_config.disable_streaming_indicator ? "true" : "false";
+-    // clang-format on
+-    if (!IsValidConfig(config_)) {
+-        utility::LogError(
+-                "Internal error, invalid configs. Maybe SDK version is "
+-                "mismatched.");
+-    }
+-}
+-
+-k4a_device_configuration_t AzureKinectSensorConfig::ConvertToNativeConfig()
+-        const {
+-    k4a_device_configuration_t k4a_config;
+-    // clang-format off
+-    k4a_config.color_format                      = string_to_k4a_image_format_t.at(config_.at("color_format"));
+-    k4a_config.color_resolution                  = string_to_k4a_color_resolution_t.at(config_.at("color_resolution"));
+-    k4a_config.depth_mode                        = string_to_k4a_depth_mode_t.at(config_.at("depth_mode"));
+-    k4a_config.camera_fps                        = string_to_k4a_fps_t.at(config_.at("camera_fps"));
+-    k4a_config.synchronized_images_only          = config_.at("synchronized_images_only") == "true";
+-    k4a_config.depth_delay_off_color_usec        = static_cast<int32_t>(std::stoi(config_.at("depth_delay_off_color_usec")));
+-    k4a_config.wired_sync_mode                   = string_to_k4a_wired_sync_mode_t.at(config_.at("wired_sync_mode"));
+-    k4a_config.subordinate_delay_off_master_usec = static_cast<uint32_t>(std::stoi(config_.at("subordinate_delay_off_master_usec")));
+-    k4a_config.disable_streaming_indicator       = config_.at("disable_streaming_indicator") == "true";
+-    // clang-format on
+-    return k4a_config;
+-}
+-
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h b/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h
+deleted file mode 100644
+index cc3df4be2..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h
++++ /dev/null
+@@ -1,66 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-#include <string>
+-#include <unordered_map>
+-
+-#include "Open3D/IO/Sensor/RGBDSensorConfig.h"
+-#include "Open3D/Utility/IJsonConvertible.h"
+-
+-struct _k4a_device_configuration_t;  // Alias of k4a_device_configuration_t
+-
+-namespace open3d {
+-namespace io {
+-
+-// Alternative implementation of _k4a_device_configuration_t with string values
+-class AzureKinectSensorConfig : public RGBDSensorConfig {
+-public:
+-    /// Default constructor, default configs will be used
+-    AzureKinectSensorConfig();
+-    /// Initialize config with a map
+-    AzureKinectSensorConfig(
+-            const std::unordered_map<std::string, std::string> &config);
+-    bool ConvertToJsonValue(Json::Value &value) const override;
+-    bool ConvertFromJsonValue(const Json::Value &value) override;
+-
+-public:
+-    void ConvertFromNativeConfig(const _k4a_device_configuration_t &k4a_config);
+-    _k4a_device_configuration_t ConvertToNativeConfig() const;
+-
+-public:
+-    // To avoid including k4a or json header, configs is stored in a map
+-    std::unordered_map<std::string, std::string> config_;
+-
+-protected:
+-    static bool IsValidConfig(
+-            const std::unordered_map<std::string, std::string> &config,
+-            bool verbose = true);
+-};
+-
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/K4aPlugin.cpp b/src/Open3D/IO/Sensor/AzureKinect/K4aPlugin.cpp
+deleted file mode 100644
+index 9b4605ca6..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/K4aPlugin.cpp
++++ /dev/null
+@@ -1,847 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#include <k4a/k4a.h>
+-#include <k4arecord/playback.h>
+-#include <k4arecord/record.h>
+-#include <cstdlib>
+-#include <cstring>
+-#include <unordered_map>
+-#include <vector>
+-
+-#ifdef _WIN32
+-#include <windows.h>
+-#else
+-#include <dlfcn.h>
+-#include <link.h>
+-#endif
+-
+-#include "Open3D/IO/Sensor/AzureKinect/K4aPlugin.h"
+-#include "Open3D/IO/Sensor/AzureKinect/PluginMacros.h"
+-#include "Open3D/Utility/Console.h"
+-#include "Open3D/Utility/Helper.h"
+-
+-namespace open3d {
+-namespace io {
+-namespace k4a_plugin {
+-
+-#ifdef _WIN32
+-
+-static const std::string k4a_lib_name = "k4a.dll";
+-static const std::string k4arecord_lib_name = "k4arecord.dll";
+-
+-static HINSTANCE GetDynamicLibHandle(const std::string& lib_name) {
+-    static std::unordered_map<std::string, HINSTANCE> map_lib_name_to_handle;
+-
+-    if (map_lib_name_to_handle.count(lib_name) == 0) {
+-        // clang-format off
+-        // To use custom library path for K4a, set environment variable K4A_LIB_DIR
+-        // Exammple:
+-        // set K4A_LIB_DIR=C:\Program Files\Azure Kinect SDK v1.2.0\sdk\windows-desktop\amd64\release\bin
+-        // Note that double qoutes and "\\" are not needed
+-        std::string env_lib_dir = "";
+-        char const* temp = std::getenv("K4A_LIB_DIR");
+-        if (temp != nullptr) {
+-            env_lib_dir = std::string(temp);
+-        }
+-        utility::LogDebug("Environment variable K4A_LIB_DIR: {}", env_lib_dir);
+-
+-        static const std::vector<std::string> k4a_lib_path_hints = {
+-            env_lib_dir,
+-            "",
+-            "C:\\Program Files\\Azure Kinect SDK v1.2.0\\sdk\\windows-desktop\\amd64\\release\\bin"
+-        };
+-        // clang-format on
+-
+-        HINSTANCE handle = NULL;
+-        for (const std::string& k4a_lib_path_hint : k4a_lib_path_hints) {
+-            utility::LogDebug("Trying k4a_lib_path_hint: {}",
+-                              k4a_lib_path_hint);
+-            std::string full_path = k4a_lib_path_hint + "\\" + lib_name;
+-            handle = LoadLibrary(TEXT(full_path.c_str()));
+-            if (handle != NULL) {
+-                utility::LogDebug("Loaded {}", full_path);
+-                break;
+-            }
+-        }
+-        if (handle == NULL) {
+-            utility::LogError("Cannot load {}", lib_name);
+-        }
+-        map_lib_name_to_handle[lib_name] = handle;
+-    }
+-    return map_lib_name_to_handle.at(lib_name);
+-}
+-
+-#define DEFINE_BRIDGED_FUNC_WITH_COUNT(lib_name, return_type, f_name, \
+-                                       num_args, ...)                 \
+-    return_type f_name(EXTRACT_TYPES_PARAMS(num_args, __VA_ARGS__)) { \
+-        typedef return_type (*f_type)(                                \
+-                EXTRACT_TYPES_PARAMS(num_args, __VA_ARGS__));         \
+-        static f_type f = nullptr;                                    \
+-                                                                      \
+-        if (!f) {                                                     \
+-            f = (f_type)GetProcAddress(GetDynamicLibHandle(lib_name), \
+-                                       #f_name);                      \
+-            if (f == nullptr) {                                       \
+-                utility::LogError("Cannot load func {}", #f_name);    \
+-            } else {                                                  \
+-                utility::LogDebug("Loaded func {}", #f_name);         \
+-            }                                                         \
+-        }                                                             \
+-        return f(EXTRACT_PARAMS(num_args, __VA_ARGS__));              \
+-    }
+-
+-#else
+-
+-static const std::string k4a_lib_name = "libk4a.so";
+-static const std::string k4arecord_lib_name = "libk4arecord.so";
+-
+-static void* GetDynamicLibHandle(const std::string& lib_name) {
+-    static std::unordered_map<std::string, void*> map_lib_name_to_handle;
+-
+-    if (map_lib_name_to_handle.count(lib_name) == 0) {
+-        // Hack to support Ubuntu 16.04 K4A library loading
+-        //
+-        // Dependency:
+-        // In __init__.py Python file, one of os.environ['LD_LIBRARY_PATH'] is
+-        // set to contain libk4a.so, libk4arecord.so and libdepthengine.so.
+-        //
+-        // Normally LD_LIBRARY_PATH cannot be set at runtime (only possible at
+-        // program load time). Here we explicitly try to load from
+-        // LD_LIBRARY_PATH.
+-        std::vector<std::string> k4a_lib_path_hints;
+-        if (const char* ld_paths_c = std::getenv("LD_LIBRARY_PATH")) {
+-            utility::SplitString(k4a_lib_path_hints, ld_paths_c, ":", true);
+-        }
+-        k4a_lib_path_hints.insert(k4a_lib_path_hints.begin(), "");
+-
+-        void* handle = nullptr;
+-        std::string full_path;
+-        for (const std::string& k4a_lib_path_hint : k4a_lib_path_hints) {
+-            if (k4a_lib_path_hint == "") {
+-                full_path = lib_name;
+-            } else {
+-                full_path = k4a_lib_path_hint + "/" + lib_name;
+-            }
+-            handle = dlopen(full_path.c_str(), RTLD_NOW);
+-            if (handle != NULL) {
+-                break;
+-            }
+-        }
+-        if (!handle) {
+-            utility::LogError("Cannot load {}", dlerror());
+-        } else {
+-            utility::LogDebug("Loaded {}", full_path);
+-            struct link_map* map = nullptr;
+-            if (!dlinfo(handle, RTLD_DI_LINKMAP, &map)) {
+-                if (map != nullptr) {
+-                    utility::LogDebug("Library path {}", map->l_name);
+-                } else {
+-                    utility::LogWarning("Cannot get link_map");
+-                }
+-            } else {
+-                utility::LogWarning("Cannot get dlinfo");
+-            }
+-        }
+-        map_lib_name_to_handle[lib_name] = handle;
+-    }
+-    return map_lib_name_to_handle.at(lib_name);
+-}
+-
+-#define DEFINE_BRIDGED_FUNC_WITH_COUNT(lib_name, return_type, f_name,        \
+-                                       num_args, ...)                        \
+-    return_type f_name(EXTRACT_TYPES_PARAMS(num_args, __VA_ARGS__)) {        \
+-        typedef return_type (*f_type)(                                       \
+-                EXTRACT_TYPES_PARAMS(num_args, __VA_ARGS__));                \
+-        static f_type f = nullptr;                                           \
+-                                                                             \
+-        if (!f) {                                                            \
+-            f = (f_type)dlsym(GetDynamicLibHandle(lib_name), #f_name);       \
+-            if (!f) {                                                        \
+-                utility::LogError("Cannot load {}: {}", #f_name, dlerror()); \
+-            }                                                                \
+-        }                                                                    \
+-        return f(EXTRACT_PARAMS(num_args, __VA_ARGS__));                     \
+-    }
+-
+-#endif
+-
+-#define DEFINE_BRIDGED_FUNC(lib_name, return_type, f_name, ...)   \
+-    DEFINE_BRIDGED_FUNC_WITH_COUNT(lib_name, return_type, f_name, \
+-                                   COUNT_ARGS(__VA_ARGS__), __VA_ARGS__)
+-
+-////////////////////////////////////////////////////////////////////////////////
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_create,
+-                    const char*,
+-                    path,
+-                    k4a_device_t,
+-                    device,
+-                    const k4a_device_configuration_t,
+-                    device_config,
+-                    k4a_record_t*,
+-                    recording_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_add_tag,
+-                    k4a_record_t,
+-                    recording_handle,
+-                    const char*,
+-                    name,
+-                    const char*,
+-                    value)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_add_imu_track,
+-                    k4a_record_t,
+-                    recording_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_write_header,
+-                    k4a_record_t,
+-                    recording_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_write_capture,
+-                    k4a_record_t,
+-                    recording_handle,
+-                    k4a_capture_t,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_write_imu_sample,
+-                    k4a_record_t,
+-                    recording_handle,
+-                    k4a_imu_sample_t,
+-                    imu_sample)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_record_flush,
+-                    k4a_record_t,
+-                    recording_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    void,
+-                    k4a_record_close,
+-                    k4a_record_t,
+-                    recording_handle)
+-
+-////////////////////////////////////////////////////////////////////////////////
+-
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_playback_open,
+-                    const char*,
+-                    path,
+-                    k4a_playback_t*,
+-                    playback_handle)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_buffer_result_t,
+-                    k4a_playback_get_raw_calibration,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    uint8_t*,
+-                    data,
+-                    size_t*,
+-                    data_size)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_playback_get_calibration,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_calibration_t*,
+-                    calibration)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_playback_get_record_configuration,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_record_configuration_t*,
+-                    config)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_buffer_result_t,
+-                    k4a_playback_get_tag,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    const char*,
+-                    name,
+-                    char*,
+-                    value,
+-                    size_t*,
+-                    value_size)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_playback_set_color_conversion,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_image_format_t,
+-                    target_format)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_stream_result_t,
+-                    k4a_playback_get_next_capture,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_capture_t*,
+-                    capture_handle)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_stream_result_t,
+-                    k4a_playback_get_previous_capture,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_capture_t*,
+-                    capture_handle)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_stream_result_t,
+-                    k4a_playback_get_next_imu_sample,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_imu_sample_t*,
+-                    imu_sample)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_stream_result_t,
+-                    k4a_playback_get_previous_imu_sample,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    k4a_imu_sample_t*,
+-                    imu_sample)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    k4a_result_t,
+-                    k4a_playback_seek_timestamp,
+-                    k4a_playback_t,
+-                    playback_handle,
+-                    int64_t,
+-                    offset_usec,
+-                    k4a_playback_seek_origin_t,
+-                    origin)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    uint64_t,
+-                    k4a_playback_get_last_timestamp_usec,
+-                    k4a_playback_t,
+-                    playback_handle)
+-DEFINE_BRIDGED_FUNC(k4arecord_lib_name,
+-                    void,
+-                    k4a_playback_close,
+-                    k4a_playback_t,
+-                    playback_handle)
+-
+-////////////////////////////////////////////////////////////////////////////////
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name, uint32_t, k4a_device_get_installed_count)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_set_debug_message_handler,
+-                    k4a_logging_message_cb_t*,
+-                    message_cb,
+-                    void*,
+-                    message_cb_context,
+-                    k4a_log_level_t,
+-                    min_level)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_open,
+-                    uint32_t,
+-                    index,
+-                    k4a_device_t*,
+-                    device_handle)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, void, k4a_device_close, k4a_device_t, device_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_wait_result_t,
+-                    k4a_device_get_capture,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_capture_t*,
+-                    capture_handle,
+-                    int32_t,
+-                    timeout_in_ms)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_wait_result_t,
+-                    k4a_device_get_imu_sample,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_imu_sample_t*,
+-                    imu_sample,
+-                    int32_t,
+-                    timeout_in_ms)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_capture_create,
+-                    k4a_capture_t*,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, void, k4a_capture_release, k4a_capture_t, capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_capture_reference,
+-                    k4a_capture_t,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_image_t,
+-                    k4a_capture_get_color_image,
+-                    k4a_capture_t,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_image_t,
+-                    k4a_capture_get_depth_image,
+-                    k4a_capture_t,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_image_t,
+-                    k4a_capture_get_ir_image,
+-                    k4a_capture_t,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_capture_set_color_image,
+-                    k4a_capture_t,
+-                    capture_handle,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_capture_set_depth_image,
+-                    k4a_capture_t,
+-                    capture_handle,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_capture_set_ir_image,
+-                    k4a_capture_t,
+-                    capture_handle,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_capture_set_temperature_c,
+-                    k4a_capture_t,
+-                    capture_handle,
+-                    float,
+-                    temperature_c)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    float,
+-                    k4a_capture_get_temperature_c,
+-                    k4a_capture_t,
+-                    capture_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_image_create,
+-                    k4a_image_format_t,
+-                    format,
+-                    int,
+-                    width_pixels,
+-                    int,
+-                    height_pixels,
+-                    int,
+-                    stride_bytes,
+-                    k4a_image_t*,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_image_create_from_buffer,
+-                    k4a_image_format_t,
+-                    format,
+-                    int,
+-                    width_pixels,
+-                    int,
+-                    height_pixels,
+-                    int,
+-                    stride_bytes,
+-                    uint8_t*,
+-                    buffer,
+-                    size_t,
+-                    buffer_size,
+-                    k4a_memory_destroy_cb_t*,
+-                    buffer_release_cb,
+-                    void*,
+-                    buffer_release_cb_context,
+-                    k4a_image_t*,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, uint8_t*, k4a_image_get_buffer, k4a_image_t, image_handle)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, size_t, k4a_image_get_size, k4a_image_t, image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_image_format_t,
+-                    k4a_image_get_format,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    int,
+-                    k4a_image_get_width_pixels,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    int,
+-                    k4a_image_get_height_pixels,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    int,
+-                    k4a_image_get_stride_bytes,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    uint64_t,
+-                    k4a_image_get_timestamp_usec,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    uint64_t,
+-                    k4a_image_get_exposure_usec,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    uint32_t,
+-                    k4a_image_get_white_balance,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    uint32_t,
+-                    k4a_image_get_iso_speed,
+-                    k4a_image_t,
+-                    image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_image_set_timestamp_usec,
+-                    k4a_image_t,
+-                    image_handle,
+-                    uint64_t,
+-                    timestamp_usec)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_image_set_exposure_time_usec,
+-                    k4a_image_t,
+-                    image_handle,
+-                    uint64_t,
+-                    exposure_usec)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_image_set_white_balance,
+-                    k4a_image_t,
+-                    image_handle,
+-                    uint32_t,
+-                    white_balance)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_image_set_iso_speed,
+-                    k4a_image_t,
+-                    image_handle,
+-                    uint32_t,
+-                    iso_speed)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, void, k4a_image_reference, k4a_image_t, image_handle)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, void, k4a_image_release, k4a_image_t, image_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_start_cameras,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_device_configuration_t*,
+-                    config)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_device_stop_cameras,
+-                    k4a_device_t,
+-                    device_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_start_imu,
+-                    k4a_device_t,
+-                    device_handle)
+-
+-DEFINE_BRIDGED_FUNC(
+-        k4a_lib_name, void, k4a_device_stop_imu, k4a_device_t, device_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_buffer_result_t,
+-                    k4a_device_get_serialnum,
+-                    k4a_device_t,
+-                    device_handle,
+-                    char*,
+-                    serial_number,
+-                    size_t*,
+-                    serial_number_size)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_get_version,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_hardware_version_t*,
+-                    version)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_get_color_control_capabilities,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_color_control_command_t,
+-                    command,
+-                    bool*,
+-                    supports_auto,
+-                    int32_t*,
+-                    min_value,
+-                    int32_t*,
+-                    max_value,
+-                    int32_t*,
+-                    step_value,
+-                    int32_t*,
+-                    default_value,
+-                    k4a_color_control_mode_t*,
+-                    default_mode)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_get_color_control,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_color_control_command_t,
+-                    command,
+-                    k4a_color_control_mode_t*,
+-                    mode,
+-                    int32_t*,
+-                    value)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_set_color_control,
+-                    k4a_device_t,
+-                    device_handle,
+-                    k4a_color_control_command_t,
+-                    command,
+-                    k4a_color_control_mode_t,
+-                    mode,
+-                    int32_t,
+-                    value)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_buffer_result_t,
+-                    k4a_device_get_raw_calibration,
+-                    k4a_device_t,
+-                    device_handle,
+-                    uint8_t*,
+-                    data,
+-                    size_t*,
+-                    data_size)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_get_calibration,
+-                    k4a_device_t,
+-                    device_handle,
+-                    const k4a_depth_mode_t,
+-                    depth_mode,
+-                    const k4a_color_resolution_t,
+-                    color_resolution,
+-                    k4a_calibration_t*,
+-                    calibration)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_device_get_sync_jack,
+-                    k4a_device_t,
+-                    device_handle,
+-                    bool*,
+-                    sync_in_jack_connected,
+-                    bool*,
+-                    sync_out_jack_connected)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_calibration_get_from_raw,
+-                    char*,
+-                    raw_calibration,
+-                    size_t,
+-                    raw_calibration_size,
+-                    const k4a_depth_mode_t,
+-                    depth_mode,
+-                    const k4a_color_resolution_t,
+-                    color_resolution,
+-                    k4a_calibration_t*,
+-                    calibration)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_calibration_3d_to_3d,
+-                    const k4a_calibration_t*,
+-                    calibration,
+-                    const k4a_float3_t*,
+-                    source_point3d_mm,
+-                    const k4a_calibration_type_t,
+-                    source_camera,
+-                    const k4a_calibration_type_t,
+-                    target_camera,
+-                    k4a_float3_t*,
+-                    target_point3d_mm)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_calibration_2d_to_3d,
+-                    const k4a_calibration_t*,
+-                    calibration,
+-                    const k4a_float2_t*,
+-                    source_point2d,
+-                    const float,
+-                    source_depth_mm,
+-                    const k4a_calibration_type_t,
+-                    source_camera,
+-                    const k4a_calibration_type_t,
+-                    target_camera,
+-                    k4a_float3_t*,
+-                    target_point3d_mm,
+-                    int*,
+-                    valid)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_calibration_3d_to_2d,
+-                    const k4a_calibration_t*,
+-                    calibration,
+-                    const k4a_float3_t*,
+-                    source_point3d_mm,
+-                    const k4a_calibration_type_t,
+-                    source_camera,
+-                    const k4a_calibration_type_t,
+-                    target_camera,
+-                    k4a_float2_t*,
+-                    target_point2d,
+-                    int*,
+-                    valid)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_calibration_2d_to_2d,
+-                    const k4a_calibration_t*,
+-                    calibration,
+-                    const k4a_float2_t*,
+-                    source_point2d,
+-                    const float,
+-                    source_depth_mm,
+-                    const k4a_calibration_type_t,
+-                    source_camera,
+-                    const k4a_calibration_type_t,
+-                    target_camera,
+-                    k4a_float2_t*,
+-                    target_point2d,
+-                    int*,
+-                    valid)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_transformation_t,
+-                    k4a_transformation_create,
+-                    const k4a_calibration_t*,
+-                    calibration)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    void,
+-                    k4a_transformation_destroy,
+-                    k4a_transformation_t,
+-                    transformation_handle)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_transformation_depth_image_to_color_camera,
+-                    k4a_transformation_t,
+-                    transformation_handle,
+-                    const k4a_image_t,
+-                    depth_image,
+-                    k4a_image_t,
+-                    transformed_depth_image)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_transformation_color_image_to_depth_camera,
+-                    k4a_transformation_t,
+-                    transformation_handle,
+-                    const k4a_image_t,
+-                    depth_image,
+-                    const k4a_image_t,
+-                    color_image,
+-                    k4a_image_t,
+-                    transformed_color_image)
+-
+-DEFINE_BRIDGED_FUNC(k4a_lib_name,
+-                    k4a_result_t,
+-                    k4a_transformation_depth_image_to_point_cloud,
+-                    k4a_transformation_t,
+-                    transformation_handle,
+-                    const k4a_image_t,
+-                    depth_image,
+-                    const k4a_calibration_type_t,
+-                    camera,
+-                    k4a_image_t,
+-                    xyz_image)
+-
+-}  // namespace k4a_plugin
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/K4aPlugin.h b/src/Open3D/IO/Sensor/AzureKinect/K4aPlugin.h
+deleted file mode 100644
+index 70a5a75f7..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/K4aPlugin.h
++++ /dev/null
+@@ -1,316 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-// To prevent header dependency propagation
+-// Do not include this file in any *.h, only in *.cc
+-#include <k4a/k4a.h>
+-#include <k4arecord/playback.h>
+-#include <k4arecord/record.h>
+-
+-namespace open3d {
+-namespace io {
+-namespace k4a_plugin {
+-
+-k4a_result_t k4a_record_create(const char *path,
+-                               k4a_device_t device,
+-                               const k4a_device_configuration_t device_config,
+-                               k4a_record_t *recording_handle);
+-
+-k4a_result_t k4a_record_add_tag(k4a_record_t recording_handle,
+-                                const char *name,
+-                                const char *value);
+-
+-k4a_result_t k4a_record_add_imu_track(k4a_record_t recording_handle);
+-
+-k4a_result_t k4a_record_write_header(k4a_record_t recording_handle);
+-
+-k4a_result_t k4a_record_write_capture(k4a_record_t recording_handle,
+-                                      k4a_capture_t capture_handle);
+-
+-k4a_result_t k4a_record_write_imu_sample(k4a_record_t recording_handle,
+-                                         k4a_imu_sample_t imu_sample);
+-
+-k4a_result_t k4a_record_flush(k4a_record_t recording_handle);
+-
+-void k4a_record_close(k4a_record_t recording_handle);
+-
+-////////////////////////////////////////////////////////////////////////////////
+-
+-k4a_result_t k4a_playback_open(const char *path,
+-                               k4a_playback_t *playback_handle);
+-
+-k4a_buffer_result_t k4a_playback_get_raw_calibration(
+-        k4a_playback_t playback_handle, uint8_t *data, size_t *data_size);
+-
+-k4a_result_t k4a_playback_get_calibration(k4a_playback_t playback_handle,
+-                                          k4a_calibration_t *calibration);
+-
+-k4a_result_t k4a_playback_get_record_configuration(
+-        k4a_playback_t playback_handle, k4a_record_configuration_t *config);
+-
+-k4a_buffer_result_t k4a_playback_get_tag(k4a_playback_t playback_handle,
+-                                         const char *name,
+-                                         char *value,
+-                                         size_t *value_size);
+-
+-k4a_result_t k4a_playback_set_color_conversion(
+-        k4a_playback_t playback_handle, k4a_image_format_t target_format);
+-
+-k4a_stream_result_t k4a_playback_get_next_capture(
+-        k4a_playback_t playback_handle, k4a_capture_t *capture_handle);
+-
+-k4a_stream_result_t k4a_playback_get_previous_capture(
+-        k4a_playback_t playback_handle, k4a_capture_t *capture_handle);
+-
+-k4a_stream_result_t k4a_playback_get_next_imu_sample(
+-        k4a_playback_t playback_handle, k4a_imu_sample_t *imu_sample);
+-
+-k4a_stream_result_t k4a_playback_get_previous_imu_sample(
+-        k4a_playback_t playback_handle, k4a_imu_sample_t *imu_sample);
+-
+-k4a_result_t k4a_playback_seek_timestamp(k4a_playback_t playback_handle,
+-                                         int64_t offset_usec,
+-                                         k4a_playback_seek_origin_t origin);
+-
+-uint64_t k4a_playback_get_last_timestamp_usec(k4a_playback_t playback_handle);
+-
+-void k4a_playback_close(k4a_playback_t playback_handle);
+-
+-////////////////////////////////////////////////////////////////////////////////
+-
+-uint32_t k4a_device_get_installed_count(void);
+-
+-k4a_result_t k4a_set_debug_message_handler(k4a_logging_message_cb_t *message_cb,
+-                                           void *message_cb_context,
+-                                           k4a_log_level_t min_level);
+-
+-k4a_result_t k4a_device_open(uint32_t index, k4a_device_t *device_handle);
+-
+-void k4a_device_close(k4a_device_t device_handle);
+-
+-k4a_wait_result_t k4a_device_get_capture(k4a_device_t device_handle,
+-                                         k4a_capture_t *capture_handle,
+-                                         int32_t timeout_in_ms);
+-
+-k4a_wait_result_t k4a_device_get_imu_sample(k4a_device_t device_handle,
+-                                            k4a_imu_sample_t *imu_sample,
+-                                            int32_t timeout_in_ms);
+-
+-k4a_result_t k4a_capture_create(k4a_capture_t *capture_handle);
+-
+-void k4a_capture_release(k4a_capture_t capture_handle);
+-
+-void k4a_capture_reference(k4a_capture_t capture_handle);
+-
+-k4a_image_t k4a_capture_get_color_image(k4a_capture_t capture_handle);
+-
+-k4a_image_t k4a_capture_get_depth_image(k4a_capture_t capture_handle);
+-
+-k4a_image_t k4a_capture_get_ir_image(k4a_capture_t capture_handle);
+-
+-void k4a_capture_set_color_image(k4a_capture_t capture_handle,
+-                                 k4a_image_t image_handle);
+-
+-void k4a_capture_set_depth_image(k4a_capture_t capture_handle,
+-                                 k4a_image_t image_handle);
+-
+-void k4a_capture_set_ir_image(k4a_capture_t capture_handle,
+-                              k4a_image_t image_handle);
+-
+-void k4a_capture_set_temperature_c(k4a_capture_t capture_handle,
+-                                   float temperature_c);
+-
+-float k4a_capture_get_temperature_c(k4a_capture_t capture_handle);
+-
+-k4a_result_t k4a_image_create(k4a_image_format_t format,
+-                              int width_pixels,
+-                              int height_pixels,
+-                              int stride_bytes,
+-                              k4a_image_t *image_handle);
+-
+-k4a_result_t k4a_image_create_from_buffer(
+-        k4a_image_format_t format,
+-        int width_pixels,
+-        int height_pixels,
+-        int stride_bytes,
+-        uint8_t *buffer,
+-        size_t buffer_size,
+-        k4a_memory_destroy_cb_t *buffer_release_cb,
+-        void *buffer_release_cb_context,
+-        k4a_image_t *image_handle);
+-
+-uint8_t *k4a_image_get_buffer(k4a_image_t image_handle);
+-
+-size_t k4a_image_get_size(k4a_image_t image_handle);
+-
+-k4a_image_format_t k4a_image_get_format(k4a_image_t image_handle);
+-
+-int k4a_image_get_width_pixels(k4a_image_t image_handle);
+-
+-int k4a_image_get_height_pixels(k4a_image_t image_handle);
+-
+-int k4a_image_get_stride_bytes(k4a_image_t image_handle);
+-
+-uint64_t k4a_image_get_timestamp_usec(k4a_image_t image_handle);
+-
+-uint64_t k4a_image_get_exposure_usec(k4a_image_t image_handle);
+-
+-uint32_t k4a_image_get_white_balance(k4a_image_t image_handle);
+-
+-uint32_t k4a_image_get_iso_speed(k4a_image_t image_handle);
+-
+-void k4a_image_set_timestamp_usec(k4a_image_t image_handle,
+-                                  uint64_t timestamp_usec);
+-
+-void k4a_image_set_exposure_time_usec(k4a_image_t image_handle,
+-                                      uint64_t exposure_usec);
+-
+-void k4a_image_set_white_balance(k4a_image_t image_handle,
+-                                 uint32_t white_balance);
+-
+-void k4a_image_set_iso_speed(k4a_image_t image_handle, uint32_t iso_speed);
+-
+-void k4a_image_reference(k4a_image_t image_handle);
+-
+-void k4a_image_release(k4a_image_t image_handle);
+-
+-k4a_result_t k4a_device_start_cameras(k4a_device_t device_handle,
+-                                      k4a_device_configuration_t *config);
+-
+-void k4a_device_stop_cameras(k4a_device_t device_handle);
+-
+-k4a_result_t k4a_device_start_imu(k4a_device_t device_handle);
+-
+-void k4a_device_stop_imu(k4a_device_t device_handle);
+-
+-k4a_buffer_result_t k4a_device_get_serialnum(k4a_device_t device_handle,
+-                                             char *serial_number,
+-                                             size_t *serial_number_size);
+-
+-k4a_result_t k4a_device_get_version(k4a_device_t device_handle,
+-                                    k4a_hardware_version_t *version);
+-
+-k4a_result_t k4a_device_get_color_control_capabilities(
+-        k4a_device_t device_handle,
+-        k4a_color_control_command_t command,
+-        bool *supports_auto,
+-        int32_t *min_value,
+-        int32_t *max_value,
+-        int32_t *step_value,
+-        int32_t *default_value,
+-        k4a_color_control_mode_t *default_mode);
+-
+-k4a_result_t k4a_device_get_color_control(k4a_device_t device_handle,
+-                                          k4a_color_control_command_t command,
+-                                          k4a_color_control_mode_t *mode,
+-                                          int32_t *value);
+-
+-k4a_result_t k4a_device_set_color_control(k4a_device_t device_handle,
+-                                          k4a_color_control_command_t command,
+-                                          k4a_color_control_mode_t mode,
+-                                          int32_t value);
+-
+-k4a_buffer_result_t k4a_device_get_raw_calibration(k4a_device_t device_handle,
+-                                                   uint8_t *data,
+-                                                   size_t *data_size);
+-
+-k4a_result_t k4a_device_get_calibration(
+-        k4a_device_t device_handle,
+-        const k4a_depth_mode_t depth_mode,
+-        const k4a_color_resolution_t color_resolution,
+-        k4a_calibration_t *calibration);
+-
+-k4a_result_t k4a_device_get_sync_jack(k4a_device_t device_handle,
+-                                      bool *sync_in_jack_connected,
+-                                      bool *sync_out_jack_connected);
+-
+-k4a_result_t k4a_calibration_get_from_raw(
+-        char *raw_calibration,
+-        size_t raw_calibration_size,
+-        const k4a_depth_mode_t depth_mode,
+-        const k4a_color_resolution_t color_resolution,
+-        k4a_calibration_t *calibration);
+-
+-k4a_result_t k4a_calibration_3d_to_3d(
+-        const k4a_calibration_t *calibration,
+-        const k4a_float3_t *source_point3d_mm,
+-        const k4a_calibration_type_t source_camera,
+-        const k4a_calibration_type_t target_camera,
+-        k4a_float3_t *target_point3d_mm);
+-
+-k4a_result_t k4a_calibration_2d_to_3d(
+-        const k4a_calibration_t *calibration,
+-        const k4a_float2_t *source_point2d,
+-        const float source_depth_mm,
+-        const k4a_calibration_type_t source_camera,
+-        const k4a_calibration_type_t target_camera,
+-        k4a_float3_t *target_point3d_mm,
+-        int *valid);
+-
+-k4a_result_t k4a_calibration_3d_to_2d(
+-        const k4a_calibration_t *calibration,
+-        const k4a_float3_t *source_point3d_mm,
+-        const k4a_calibration_type_t source_camera,
+-        const k4a_calibration_type_t target_camera,
+-        k4a_float2_t *target_point2d,
+-        int *valid);
+-
+-k4a_result_t k4a_calibration_2d_to_2d(
+-        const k4a_calibration_t *calibration,
+-        const k4a_float2_t *source_point2d,
+-        const float source_depth_mm,
+-        const k4a_calibration_type_t source_camera,
+-        const k4a_calibration_type_t target_camera,
+-        k4a_float2_t *target_point2d,
+-        int *valid);
+-
+-k4a_transformation_t k4a_transformation_create(
+-        const k4a_calibration_t *calibration);
+-
+-void k4a_transformation_destroy(k4a_transformation_t transformation_handle);
+-
+-k4a_result_t k4a_transformation_depth_image_to_color_camera(
+-        k4a_transformation_t transformation_handle,
+-        const k4a_image_t depth_image,
+-        k4a_image_t transformed_depth_image);
+-
+-k4a_result_t k4a_transformation_color_image_to_depth_camera(
+-        k4a_transformation_t transformation_handle,
+-        const k4a_image_t depth_image,
+-        const k4a_image_t color_image,
+-        k4a_image_t transformed_color_image);
+-
+-k4a_result_t k4a_transformation_depth_image_to_point_cloud(
+-        k4a_transformation_t transformation_handle,
+-        const k4a_image_t depth_image,
+-        const k4a_calibration_type_t camera,
+-        k4a_image_t xyz_image);
+-
+-}  // namespace k4a_plugin
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/MKVMetadata.cpp b/src/Open3D/IO/Sensor/AzureKinect/MKVMetadata.cpp
+deleted file mode 100644
+index 982da3384..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/MKVMetadata.cpp
++++ /dev/null
+@@ -1,62 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#include "Open3D/IO/Sensor/AzureKinect/MKVMetadata.h"
+-
+-#include <json/json.h>
+-#include <unordered_map>
+-
+-namespace open3d {
+-namespace io {
+-
+-bool MKVMetadata::ConvertToJsonValue(Json::Value &value) const {
+-    intrinsics_.ConvertToJsonValue(value);
+-
+-    value["serial_number_"] = serial_number_;
+-    value["color_mode"] = color_mode_;
+-    value["depth_mode"] = depth_mode_;
+-
+-    value["stream_length_usec"] = stream_length_usec_;
+-    value["width"] = width_;
+-    value["height"] = height_;
+-
+-    return true;
+-}
+-bool MKVMetadata::ConvertFromJsonValue(const Json::Value &value) {
+-    intrinsics_.ConvertFromJsonValue(value);
+-
+-    serial_number_ = value["serial_number"].asString();
+-    color_mode_ = value["color_mode"].asString();
+-    depth_mode_ = value["depth_mode"].asString();
+-
+-    stream_length_usec_ = value["stream_length_usec"].asUInt64();
+-    width_ = value["width"].asInt();
+-    height_ = value["height"].asInt();
+-
+-    return true;
+-}
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/MKVMetadata.h b/src/Open3D/IO/Sensor/AzureKinect/MKVMetadata.h
+deleted file mode 100644
+index f79f33b7b..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/MKVMetadata.h
++++ /dev/null
+@@ -1,61 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-#include "Open3D/Camera/PinholeCameraIntrinsic.h"
+-#include "Open3D/Utility/IJsonConvertible.h"
+-
+-enum class SensorType { AZURE_KINECT = 0, REAL_SENSE = 1 };
+-
+-namespace open3d {
+-
+-namespace camera {
+-class PinholeCameraIntrinsic;
+-}
+-
+-namespace io {
+-
+-class MKVMetadata : public utility::IJsonConvertible {
+-public:
+-    bool ConvertToJsonValue(Json::Value &value) const override;
+-    bool ConvertFromJsonValue(const Json::Value &value) override;
+-
+-public:
+-    // Shared intrinsics betwee RGB & depth.
+-    // We assume depth image is always warped to the color image system
+-    camera::PinholeCameraIntrinsic intrinsics_;
+-
+-    std::string serial_number_ = "";
+-    uint64_t stream_length_usec_ = 0;
+-    int width_;
+-    int height_;
+-    std::string color_mode_;
+-    std::string depth_mode_;
+-};
+-
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/MKVReader.cpp b/src/Open3D/IO/Sensor/AzureKinect/MKVReader.cpp
+deleted file mode 100644
+index e2c48a03e..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/MKVReader.cpp
++++ /dev/null
+@@ -1,181 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#include "Open3D/IO/Sensor/AzureKinect/MKVReader.h"
+-
+-#include <json/json.h>
+-#include <k4a/k4a.h>
+-#include <k4arecord/playback.h>
+-#include <k4arecord/record.h>
+-#include <turbojpeg.h>
+-#include <iostream>
+-
+-#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h"
+-#include "Open3D/IO/Sensor/AzureKinect/K4aPlugin.h"
+-
+-namespace open3d {
+-namespace io {
+-
+-MKVReader::MKVReader() : handle_(nullptr), transformation_(nullptr) {}
+-
+-bool MKVReader::IsOpened() { return handle_ != nullptr; }
+-
+-std::string MKVReader::GetTagInMetadata(const std::string &tag_name) {
+-    char res_buffer[256];
+-    size_t res_size = 256;
+-
+-    k4a_buffer_result_t result = k4a_plugin::k4a_playback_get_tag(
+-            handle_, tag_name.c_str(), res_buffer, &res_size);
+-    if (K4A_BUFFER_RESULT_SUCCEEDED == result) {
+-        return res_buffer;
+-    } else if (K4A_BUFFER_RESULT_TOO_SMALL == result) {
+-        utility::LogError("{} tag's content is too long.", tag_name);
+-    } else {
+-        utility::LogError("{} tag does not exist.", tag_name);
+-    }
+-}
+-
+-bool MKVReader::Open(const std::string &filename) {
+-    if (IsOpened()) {
+-        Close();
+-    }
+-
+-    if (K4A_RESULT_SUCCEEDED !=
+-        k4a_plugin::k4a_playback_open(filename.c_str(), &handle_)) {
+-        utility::LogWarning("Unable to open file {}", filename);
+-        return false;
+-    }
+-
+-    metadata_.ConvertFromJsonValue(GetMetadataJson());
+-    is_eof_ = false;
+-
+-    return true;
+-}
+-
+-void MKVReader::Close() { k4a_plugin::k4a_playback_close(handle_); }
+-
+-Json::Value MKVReader::GetMetadataJson() {
+-    static const std::unordered_map<std::string, std::pair<int, int>>
+-            resolution_to_width_height({{"720P", std::make_pair(1280, 720)},
+-                                        {"1080P", std::make_pair(1920, 1080)},
+-                                        {"1440P", std::make_pair(2560, 1440)},
+-                                        {"1536P", std::make_pair(2048, 1536)},
+-                                        {"2160P", std::make_pair(3840, 2160)},
+-                                        {"3072P", std::make_pair(4096, 3072)}});
+-
+-    if (!IsOpened()) {
+-        utility::LogError("Null file handler. Please call Open().");
+-    }
+-
+-    Json::Value value;
+-
+-    k4a_calibration_t calibration;
+-    if (K4A_RESULT_SUCCEEDED !=
+-        k4a_plugin::k4a_playback_get_calibration(handle_, &calibration)) {
+-        utility::LogError("Failed to get calibration");
+-    }
+-
+-    camera::PinholeCameraIntrinsic pinhole_camera;
+-    auto color_camera_calibration = calibration.color_camera_calibration;
+-    auto param = color_camera_calibration.intrinsics.parameters.param;
+-    pinhole_camera.SetIntrinsics(color_camera_calibration.resolution_width,
+-                                 color_camera_calibration.resolution_height,
+-                                 param.fx, param.fy, param.cx, param.cy);
+-    pinhole_camera.ConvertToJsonValue(value);
+-
+-    value["serial_number"] = GetTagInMetadata("K4A_DEVICE_SERIAL_NUMBER");
+-    value["depth_mode"] = GetTagInMetadata("K4A_DEPTH_MODE");
+-    value["color_mode"] = GetTagInMetadata("K4A_COLOR_MODE");
+-
+-    value["stream_length_usec"] =
+-            k4a_plugin::k4a_playback_get_last_timestamp_usec(handle_);
+-    auto color_mode = value["color_mode"].asString();
+-    size_t pos = color_mode.find('_');
+-    if (pos == std::string::npos) {
+-        utility::LogError("Unknown color format {}", color_mode);
+-    }
+-    std::string resolution =
+-            std::string(color_mode.begin() + pos + 1, color_mode.end());
+-    if (resolution_to_width_height.count(resolution) == 0) {
+-        utility::LogError("Unknown resolution format {}", resolution);
+-    }
+-
+-    auto width_height = resolution_to_width_height.at(resolution);
+-    value["width"] = width_height.first;
+-    value["height"] = width_height.second;
+-
+-    // For internal usages
+-    transformation_ = k4a_plugin::k4a_transformation_create(&calibration);
+-
+-    return value;
+-}
+-
+-bool MKVReader::SeekTimestamp(size_t timestamp) {
+-    if (!IsOpened()) {
+-        utility::LogWarning("Null file handler. Please call Open().");
+-        return false;
+-    }
+-
+-    if (timestamp >= metadata_.stream_length_usec_) {
+-        utility::LogWarning("Timestamp {} exceeds maximum {} (us).", timestamp,
+-                            metadata_.stream_length_usec_);
+-        return false;
+-    }
+-
+-    if (K4A_RESULT_SUCCEEDED !=
+-        k4a_plugin::k4a_playback_seek_timestamp(handle_, timestamp,
+-                                                K4A_PLAYBACK_SEEK_BEGIN)) {
+-        utility::LogWarning("Unable to go to timestamp {}", timestamp);
+-        return false;
+-    }
+-    return true;
+-}
+-
+-std::shared_ptr<geometry::RGBDImage> MKVReader::NextFrame() {
+-    if (!IsOpened()) {
+-        utility::LogError("Null file handler. Please call Open().");
+-    }
+-
+-    k4a_capture_t k4a_capture;
+-    k4a_stream_result_t res =
+-            k4a_plugin::k4a_playback_get_next_capture(handle_, &k4a_capture);
+-    if (K4A_STREAM_RESULT_EOF == res) {
+-        utility::LogInfo("EOF reached");
+-        is_eof_ = true;
+-        return nullptr;
+-    } else if (K4A_STREAM_RESULT_FAILED == res) {
+-        utility::LogInfo("Empty frame encountered, skip");
+-        return nullptr;
+-    }
+-
+-    auto rgbd =
+-            AzureKinectSensor::DecompressCapture(k4a_capture, transformation_);
+-    k4a_plugin::k4a_capture_release(k4a_capture);
+-
+-    return rgbd;
+-}
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/MKVReader.h b/src/Open3D/IO/Sensor/AzureKinect/MKVReader.h
+deleted file mode 100644
+index 5c6270d7a..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/MKVReader.h
++++ /dev/null
+@@ -1,66 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-#include "Open3D/Geometry/RGBDImage.h"
+-#include "Open3D/IO/Sensor/AzureKinect/MKVMetadata.h"
+-#include "Open3D/Utility/IJsonConvertible.h"
+-
+-struct _k4a_playback_t;        // typedef _k4a_playback_t* k4a_playback_t;
+-struct _k4a_capture_t;         // typedef _k4a_capture_t* k4a_capture_t;
+-struct _k4a_transformation_t;  // typedef _k4a_transformation_t*
+-                               // k4a_transformation_t;
+-
+-namespace open3d {
+-namespace io {
+-
+-class MKVReader {
+-public:
+-    MKVReader();
+-    virtual ~MKVReader() {}
+-
+-    bool IsOpened();
+-    bool IsEOF() { return is_eof_; }
+-
+-    bool Open(const std::string &filename);
+-    void Close();
+-
+-    MKVMetadata &GetMetadata() { return metadata_; }
+-    bool SeekTimestamp(size_t timestamp);
+-    std::shared_ptr<geometry::RGBDImage> NextFrame();
+-
+-private:
+-    _k4a_playback_t *handle_;
+-    _k4a_transformation_t *transformation_;
+-    MKVMetadata metadata_;
+-    bool is_eof_ = false;
+-
+-    Json::Value GetMetadataJson();
+-    std::string GetTagInMetadata(const std::string &tag_name);
+-};
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/MKVWriter.cpp b/src/Open3D/IO/Sensor/AzureKinect/MKVWriter.cpp
+deleted file mode 100644
+index 584e5afc3..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/MKVWriter.cpp
++++ /dev/null
+@@ -1,91 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#include "Open3D/IO/Sensor/AzureKinect/MKVWriter.h"
+-
+-#include <k4a/k4a.h>
+-#include <k4arecord/playback.h>
+-#include <k4arecord/record.h>
+-
+-#include "Open3D/IO/Sensor/AzureKinect/K4aPlugin.h"
+-
+-namespace open3d {
+-namespace io {
+-
+-MKVWriter::MKVWriter() : handle_(nullptr) {}
+-
+-bool MKVWriter::Open(const std::string &filename,
+-                     const _k4a_device_configuration_t &config,
+-                     k4a_device_t device) {
+-    if (IsOpened()) {
+-        Close();
+-    }
+-
+-    if (K4A_RESULT_SUCCEEDED != k4a_plugin::k4a_record_create(filename.c_str(),
+-                                                              device, config,
+-                                                              &handle_)) {
+-        utility::LogWarning("Unable to open file {}", filename);
+-        return false;
+-    }
+-
+-    return true;
+-}
+-
+-bool MKVWriter::IsOpened() { return handle_ != nullptr; }
+-
+-bool MKVWriter::SetMetadata(const MKVMetadata &metadata) {
+-    metadata_ = metadata;
+-
+-    if (K4A_RESULT_SUCCEEDED != k4a_plugin::k4a_record_write_header(handle_)) {
+-        utility::LogWarning("Unable to write header");
+-        return false;
+-    }
+-    return true;
+-}
+-
+-void MKVWriter::Close() {
+-    if (K4A_RESULT_SUCCEEDED != k4a_plugin::k4a_record_flush(handle_)) {
+-        utility::LogWarning("Unable to flush before writing");
+-    }
+-    k4a_plugin::k4a_record_close(handle_);
+-}
+-
+-bool MKVWriter::NextFrame(k4a_capture_t capture) {
+-    if (!IsOpened()) {
+-        utility::LogWarning("Null file handler. Please call Open().");
+-        return false;
+-    }
+-
+-    if (K4A_RESULT_SUCCEEDED !=
+-        k4a_plugin::k4a_record_write_capture(handle_, capture)) {
+-        utility::LogWarning("Unable to write frame to mkv.");
+-        return false;
+-    }
+-
+-    return true;
+-}
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/MKVWriter.h b/src/Open3D/IO/Sensor/AzureKinect/MKVWriter.h
+deleted file mode 100644
+index 930ab3760..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/MKVWriter.h
++++ /dev/null
+@@ -1,62 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-#include "Open3D/Geometry/RGBDImage.h"
+-#include "Open3D/IO/Sensor/AzureKinect/MKVMetadata.h"
+-#include "Open3D/Utility/IJsonConvertible.h"
+-
+-struct _k4a_device_configuration_t;  // Alias of k4a_device_configuration_t
+-struct _k4a_device_t;                // typedef _k4a_device_t* k4a_device_t;
+-struct _k4a_capture_t;               // typedef _k4a_capture_t* k4a_capture_t;
+-struct _k4a_record_t;                // typedef _k4a_record_t* k4a_record_t;
+-
+-namespace open3d {
+-namespace io {
+-
+-class MKVWriter {
+-public:
+-    MKVWriter();
+-    virtual ~MKVWriter() {}
+-
+-    bool IsOpened();
+-
+-    /* We assume device is already set properly according to config */
+-    bool Open(const std::string &filename,
+-              const _k4a_device_configuration_t &config,
+-              _k4a_device_t *device);
+-    void Close();
+-
+-    bool SetMetadata(const MKVMetadata &metadata);
+-    bool NextFrame(_k4a_capture_t *);
+-
+-private:
+-    _k4a_record_t *handle_;
+-    MKVMetadata metadata_;
+-};
+-}  // namespace io
+-}  // namespace open3d
+diff --git a/src/Open3D/IO/Sensor/AzureKinect/PluginMacros.h b/src/Open3D/IO/Sensor/AzureKinect/PluginMacros.h
+deleted file mode 100644
+index 22fb57de7..000000000
+--- a/src/Open3D/IO/Sensor/AzureKinect/PluginMacros.h
++++ /dev/null
+@@ -1,235 +0,0 @@
+-// ----------------------------------------------------------------------------
+-// -                        Open3D: www.open3d.org                            -
+-// ----------------------------------------------------------------------------
+-// The MIT License (MIT)
+-//
+-// Copyright (c) 2018 www.open3d.org
+-//
+-// Permission is hereby granted, free of charge, to any person obtaining a copy
+-// of this software and associated documentation files (the "Software"), to deal
+-// in the Software without restriction, including without limitation the rights
+-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+-// copies of the Software, and to permit persons to whom the Software is
+-// furnished to do so, subject to the following conditions:
+-//
+-// The above copyright notice and this permission notice shall be included in
+-// all copies or substantial portions of the Software.
+-//
+-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+-// IN THE SOFTWARE.
+-// ----------------------------------------------------------------------------
+-
+-#pragma once
+-
+-// clang-format off
+-#define ARGS_1(a1, ...) a1
+-#define ARGS_2(a1, a2, ...) a2
+-#define ARGS_3(a1, a2, a3, ...) a3
+-#define ARGS_4(a1, a2, a3, a4, ...) a4
+-#define ARGS_5(a1, a2, a3, a4, a5, ...) a5
+-#define ARGS_6(a1, a2, a3, a4, a5, a6, ...) a6
+-#define ARGS_7(a1, a2, a3, a4, a5, a6, a7, ...) a7
+-#define ARGS_8(a1, a2, a3, a4, a5, a6, a7, a8, ...) a8
+-#define ARGS_9(a1, a2, a3, a4, a5, a6, a7, a8, a9, ...) a9
+-#define ARGS_10(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...) a10
+-#define ARGS_11(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, ...) a11
+-#define ARGS_12(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, ...) a12
+-#define ARGS_13(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, ...) a13
+-#define ARGS_14(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, ...) a14
+-#define ARGS_15(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, ...) a15
+-#define ARGS_16(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, ...) a16
+-#define ARGS_17(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, ...) a17
+-#define ARGS_18(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, ...) a18
+-#define ARGS_19(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, ...) a19
+-#define ARGS_20(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, ...) a20
+-#define ARGS_21(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20, a21, ...) a21
+-// clang-format on
+-
+-#define EXPAND(x) x  // MSVC fix
+-
+-// Count __VA_ARGS__ for MSVC https://stackoverflow.com/a/26685339/1255535
+-#ifdef _MSC_VER
+-
+-#define __NARGS(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, \
+-                _15, _16, _17, _18, _19, _20, _21, VAL, ...)                 \
+-    VAL
+-#define NARGS_1(...)                                                           \
+-    EXPAND(__NARGS(__VA_ARGS__, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, \
+-                   8, 7, 6, 5, 4, 3, 2, 1, 0))
+-#define AUGMENTER(...) unused, __VA_ARGS__
+-#define COUNT_ARGS(...) NARGS_1(AUGMENTER(__VA_ARGS__))
+-
+-#else
+-#define COUNT_ARGS(...)                                                       \
+-    __NARGS(0, ##__VA_ARGS__, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, \
+-            9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+-#define __NARGS(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, \
+-                _14, _15, _16, _17, _18, _19, _20, _21, N, ...)             \
+-    N
+-
+-#endif
+-
+-// Convert to list of "arg_type arg_name"
+-// Converts:
+-//     float, a1, int, a2, short, a3, double, a4
+-// To:
+-//     float a1, int a2, short a3, double a4
+-// clang-format off
+-#define EXTRACT_TYPES_PARAMS_0(...)
+-
+-// Workaround: with older compilers ##__VA_ARGS__ may not eliminate unnecessary
+-// comma when __VA_ARGS__ is empty.
+-// In this case, COUNT_ARGS() will be 1 where it should be 0.
+-#define EXTRACT_TYPES_PARAMS_1(...)
+-
+-#define EXTRACT_TYPES_PARAMS_2(...) \
+-    EXPAND(ARGS_1(__VA_ARGS__)) EXPAND(ARGS_2(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_4(...) \
+-    EXPAND(ARGS_1(__VA_ARGS__)) EXPAND(ARGS_2(__VA_ARGS__)), \
+-    EXPAND(ARGS_3(__VA_ARGS__)) EXPAND(ARGS_4(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_6(...) \
+-    EXPAND(ARGS_1(__VA_ARGS__)) EXPAND(ARGS_2(__VA_ARGS__)), \
+-    EXPAND(ARGS_3(__VA_ARGS__)) EXPAND(ARGS_4(__VA_ARGS__)), \
+-    EXPAND(ARGS_5(__VA_ARGS__)) EXPAND(ARGS_6(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_8(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_10(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_9 (__VA_ARGS__)) EXPAND(ARGS_10(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_12(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_9 (__VA_ARGS__)) EXPAND(ARGS_10(__VA_ARGS__)), \
+-    EXPAND(ARGS_11(__VA_ARGS__)) EXPAND(ARGS_12(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_14(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_9 (__VA_ARGS__)) EXPAND(ARGS_10(__VA_ARGS__)), \
+-    EXPAND(ARGS_11(__VA_ARGS__)) EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_13(__VA_ARGS__)) EXPAND(ARGS_14(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_16(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_9 (__VA_ARGS__)) EXPAND(ARGS_10(__VA_ARGS__)), \
+-    EXPAND(ARGS_11(__VA_ARGS__)) EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_13(__VA_ARGS__)) EXPAND(ARGS_14(__VA_ARGS__)), \
+-    EXPAND(ARGS_15(__VA_ARGS__)) EXPAND(ARGS_16(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_18(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_9 (__VA_ARGS__)) EXPAND(ARGS_10(__VA_ARGS__)), \
+-    EXPAND(ARGS_11(__VA_ARGS__)) EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_13(__VA_ARGS__)) EXPAND(ARGS_14(__VA_ARGS__)), \
+-    EXPAND(ARGS_15(__VA_ARGS__)) EXPAND(ARGS_16(__VA_ARGS__)), \
+-    EXPAND(ARGS_17(__VA_ARGS__)) EXPAND(ARGS_18(__VA_ARGS__))
+-
+-#define EXTRACT_TYPES_PARAMS_20(...) \
+-    EXPAND(ARGS_1 (__VA_ARGS__)) EXPAND(ARGS_2 (__VA_ARGS__)), \
+-    EXPAND(ARGS_3 (__VA_ARGS__)) EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_5 (__VA_ARGS__)) EXPAND(ARGS_6 (__VA_ARGS__)), \
+-    EXPAND(ARGS_7 (__VA_ARGS__)) EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_9 (__VA_ARGS__)) EXPAND(ARGS_10(__VA_ARGS__)), \
+-    EXPAND(ARGS_11(__VA_ARGS__)) EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_13(__VA_ARGS__)) EXPAND(ARGS_14(__VA_ARGS__)), \
+-    EXPAND(ARGS_15(__VA_ARGS__)) EXPAND(ARGS_16(__VA_ARGS__)), \
+-    EXPAND(ARGS_17(__VA_ARGS__)) EXPAND(ARGS_18(__VA_ARGS__)), \
+-    EXPAND(ARGS_19(__VA_ARGS__)) EXPAND(ARGS_20(__VA_ARGS__))
+-// clang-format on
+-
+-// Convert to list of "arg_type arg_name" caller
+-#define EXTRACT_TYPES_PARAMS(num_args, ...) \
+-    EXTRACT_TYPES_PARAMS_##num_args(__VA_ARGS__)
+-
+-// Convert to list of "arg_name"
+-// Converts:
+-//     float, a1, int, a2, short, a3, double, a4
+-// To:
+-//     a1, a2, a3, a4
+-// clang-format off
+-#define EXTRACT_PARAMS_0(...)
+-
+-// Workaround: with older compilers ##__VA_ARGS__ may not eliminate unnecessary
+-// comma when __VA_ARGS__ is empty.
+-// In this case, COUNT_ARGS() will be 1 where it should be 0.
+-#define EXTRACT_PARAMS_1(...)
+-
+-#define EXTRACT_PARAMS_2(...) \
+-    EXPAND(ARGS_2(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_4(...) \
+-    EXPAND(ARGS_2(__VA_ARGS__)), EXPAND(ARGS_4(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_6(...) \
+-    EXPAND(ARGS_2(__VA_ARGS__)), EXPAND(ARGS_4(__VA_ARGS__)), \
+-    EXPAND(ARGS_6(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_8(...) \
+-    EXPAND(ARGS_2(__VA_ARGS__)), EXPAND(ARGS_4(__VA_ARGS__)), \
+-    EXPAND(ARGS_6(__VA_ARGS__)), EXPAND(ARGS_8(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_10(...) \
+-    EXPAND(ARGS_2 (__VA_ARGS__)), EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_6 (__VA_ARGS__)), EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_10(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_12(...) \
+-    EXPAND(ARGS_2 (__VA_ARGS__)), EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_6 (__VA_ARGS__)), EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_10(__VA_ARGS__)), EXPAND(ARGS_12(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_14(...) \
+-    EXPAND(ARGS_2 (__VA_ARGS__)), EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_6 (__VA_ARGS__)), EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_10(__VA_ARGS__)), EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_14(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_16(...) \
+-    EXPAND(ARGS_2 (__VA_ARGS__)), EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_6 (__VA_ARGS__)), EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_10(__VA_ARGS__)), EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_14(__VA_ARGS__)), EXPAND(ARGS_16(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_18(...) \
+-    EXPAND(ARGS_2 (__VA_ARGS__)), EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_6 (__VA_ARGS__)), EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_10(__VA_ARGS__)), EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_14(__VA_ARGS__)), EXPAND(ARGS_16(__VA_ARGS__)), \
+-    EXPAND(ARGS_18(__VA_ARGS__))
+-
+-#define EXTRACT_PARAMS_20(...) \
+-    EXPAND(ARGS_2 (__VA_ARGS__)), EXPAND(ARGS_4 (__VA_ARGS__)), \
+-    EXPAND(ARGS_6 (__VA_ARGS__)), EXPAND(ARGS_8 (__VA_ARGS__)), \
+-    EXPAND(ARGS_10(__VA_ARGS__)), EXPAND(ARGS_12(__VA_ARGS__)), \
+-    EXPAND(ARGS_14(__VA_ARGS__)), EXPAND(ARGS_16(__VA_ARGS__)), \
+-    EXPAND(ARGS_18(__VA_ARGS__)), EXPAND(ARGS_20(__VA_ARGS__))
+-// clang-format on
+-
+-// Convert to list of "arg_name" caller
+-#define EXTRACT_PARAMS(num_args, ...) EXTRACT_PARAMS_##num_args(__VA_ARGS__)
 diff --git a/src/Open3D/Open3D.h.in b/src/Open3D/Open3D.h.in
-index 6e0adceb..216ec698 100644
+index 6e0adceb1..07351db50 100644
 --- a/src/Open3D/Open3D.h.in
 +++ b/src/Open3D/Open3D.h.in
-@@ -68,6 +68,7 @@
+@@ -65,6 +65,7 @@
+ #include "Open3D/Utility/FileSystem.h"
+ #include "Open3D/Utility/Helper.h"
+ #include "Open3D/Utility/Timer.h"
++/*
  #include "Open3D/Visualization/Utility/DrawGeometry.h"
  #include "Open3D/Visualization/Utility/SelectionPolygon.h"
  #include "Open3D/Visualization/Utility/SelectionPolygonVolume.h"
-+/*
- #include "Open3D/Visualization/Visualizer/ViewControl.h"
- #include "Open3D/Visualization/Visualizer/ViewControlWithCustomAnimation.h"
- #include "Open3D/Visualization/Visualizer/ViewControlWithEditing.h"
-@@ -76,6 +77,7 @@
+@@ -76,14 +77,17 @@
  #include "Open3D/Visualization/Visualizer/VisualizerWithEditing.h"
  #include "Open3D/Visualization/Visualizer/VisualizerWithKeyCallback.h"
  #include "Open3D/Visualization/Visualizer/VisualizerWithVertexSelection.h"
 +*/
  
  // clang-format off
++/*
  @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/AzureKinect/AzureKinectRecorder.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensorConfig.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/AzureKinect/AzureKinectSensor.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/AzureKinect/MKVMetadata.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/AzureKinect/MKVReader.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/AzureKinect/MKVWriter.h"
++*/
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/RGBDRecorder.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/RGBDSensorConfig.h"
+ @BUILD_AZURE_KINECT_COMMENT@#include "Open3D/IO/Sensor/RGBDSensor.h"
